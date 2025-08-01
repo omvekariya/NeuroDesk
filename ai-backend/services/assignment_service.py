@@ -1,15 +1,17 @@
 """
 Main assignment service - Step 1: Extract skills from ticket using provided skills list
 """
+from datetime import datetime
 import logging
 import time
 import requests
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 from langchain_openai import ChatOpenAI
 from models.ticket import Ticket, TicketAssignmentResponse, SkillScoreSimple
 from models.skill import Skill
-from models.technician import Technician
+from models.technician import AvailabilityStatus, SkillLevel, SkillObject, Technician
 from services.skill_extraction import SkillExtractionService
+from services.technician_selection import TechnicianSelectionService
 from config.settings import Config
 
 logger = logging.getLogger(__name__)
@@ -20,6 +22,7 @@ class AssignmentService:
     def __init__(self, llm: ChatOpenAI):
         self.llm = llm
         self.skill_extraction_service = SkillExtractionService(llm)
+        self.technician_selection_service = TechnicianSelectionService(llm)
         
     def process_ticket_assignment(self, request_data: Dict[str, Any]) -> TicketAssignmentResponse:
         """
@@ -40,8 +43,6 @@ class AssignmentService:
             
             # Step 2: Get available skills from backend
             available_skills = self._get_available_skills()
-
-            print("\n\n\tavailable_skills", available_skills)
         
             # Step 3: Extract skills from ticket using available skills list & LLM
             extracted_skill_names = self._extract_skills_from_ticket(ticket, available_skills)
@@ -49,27 +50,26 @@ class AssignmentService:
             # Step 4: Convert skill names to SkillScoreSimple objects
             extracted_skills = self._get_skill_objects(extracted_skill_names, available_skills)
 
-            print("\n\n\textracted_skill_names", extracted_skill_names)
+            print("\n\n\textracted_skills", extracted_skills)
 
             # Step 5: Get technicians that match the extracted skills from backend
             technicians = self._get_technicians(extracted_skills)
 
-            print("\n\n\textracted_skills", extracted_skills)
+            if len(technicians) == 0:
+                technicians = self._get_technicians(extracted_skills, by_skills=False)
+
+            print("\n\n\ttechnicians", technicians)
 
             # Step 6: Select the best technician based on the extracted skills
-            selected_technician = self._select_best_technician(technicians, extracted_skills)
-
-            print("\n\n\tselected_technician", selected_technician)
+            selected_technician, justification = self._select_best_technician(technicians, extracted_skills, ticket)
 
             # Step 7: Return the result
             return TicketAssignmentResponse(
                 success=True,
-                selected_technician_id=None,  # Will be implemented in next steps
-                confidence_score=None,        # Will be implemented in next steps
-                reasoning="Skills extracted successfully using provided skills list. Technician selection pending implementation.",
+                selected_technician_id=selected_technician.id,
+                justification=justification,
                 extracted_skills=extracted_skills,
                 error_message=None,
-                assignment_timestamp=None,
             )
             
         except Exception as e:
@@ -235,7 +235,7 @@ class AssignmentService:
             
             # Convert response data to Skill objects
             skills = []
-            for skill_data in skills_data:
+            for skill_data in skills_data["data"]["skills"]:
                 try:
                     skill = Skill(**skill_data)
                     skills.append(skill)
@@ -281,7 +281,7 @@ class AssignmentService:
             logger.error(f"Error filtering skill objects: {str(e)}")
             raise
    
-    def _get_technicians(self, extracted_skills: List[Skill]) -> List[Technician]:
+    def _get_technicians(self, extracted_skills: List[Skill], by_skills: bool = True) -> List[Technician]:
         """
         Get technicians that match the extracted skills from the backend server
         
@@ -302,17 +302,27 @@ class AssignmentService:
             logger.info(f"Searching for technicians with skills: {skill_ids}")
             
             # Use the technicians by-skills endpoint
-            technicians_url = f"{Config.BACKEND_SERVER_URL}/api/v1/technicians/by-skills"
+
+            if by_skills:
+
+                technicians_url = f"{Config.BACKEND_SERVER_URL}/api/v1/technicians/by-skills"
             
-            # Prepare query parameters
-            params = {
-                'skills': skill_ids,  # API accepts array of skill IDs
-                'limit': 10  # Limit results to top 10 technicians
-            }
+                # Prepare query parameters
+                params = {
+                    'skills': skill_ids,  # API accepts array of skill IDs
+                }
             
-            response = requests.get(technicians_url, params=params, timeout=10)
-            response.raise_for_status()
+                response = requests.get(technicians_url, params=params, timeout=10)
+                response.raise_for_status()
+                
+            else:
+                # Prepare query parameters
+                technicians_url = f"{Config.BACKEND_SERVER_URL}/api/v1/technicians/all"
+
+                response = requests.get(technicians_url, timeout=10)
+                response.raise_for_status()
             
+
             response_data = response.json()
             
             if not response_data.get('success'):
@@ -320,28 +330,67 @@ class AssignmentService:
             
             # Extract technicians from the response structure
             technicians_data = response_data.get('data', {}).get('technicians', [])
+
+            logger.info(f"Total technicians fetched: {len(technicians_data)}")
             
             # Convert response data to Technician objects
             technicians = []
             for tech_data in technicians_data:
                 try:
-                    # Extract skills from the technician data
+                    # Parse skills data - convert to SkillObject format
                     skills = []
                     if tech_data.get('skills'):
-                        skills = [str(skill.get('id', '')) for skill in tech_data['skills']]
+                        for skill_data in tech_data['skills']:
+                            if isinstance(skill_data, dict) and 'id' in skill_data:
+                                skill_obj = SkillObject(
+                                    id=skill_data.get('id'),
+                                    percentage=skill_data.get('percentage', 0)
+                                )
+                                skills.append(skill_obj)
                     
+                    # Parse assigned tickets (should be array of integers)
+                    assigned_tickets = tech_data.get('assigned_tickets', [])
+                    if not isinstance(assigned_tickets, list):
+                        assigned_tickets = []
+                    
+                    # Parse timestamps
+                    created_at = None
+                    updated_at = None
+                    
+                    if tech_data.get('created_at'):
+                        try:
+                            created_at = datetime.fromisoformat(tech_data['created_at'].replace('Z', '+00:00'))
+                        except (ValueError, AttributeError):
+                            created_at = datetime.now()
+                    else:
+                        created_at = datetime.now()
+                    
+                    if tech_data.get('updated_at'):
+                        try:
+                            updated_at = datetime.fromisoformat(tech_data['updated_at'].replace('Z', '+00:00'))
+                        except (ValueError, AttributeError):
+                            updated_at = datetime.now()
+                    else:
+                        updated_at = datetime.now()
+                    
+                    # Create Technician object with proper field mapping
                     technician = Technician(
                         id=tech_data.get('id'),
                         name=tech_data.get('name'),
                         user_id=tech_data.get('user_id'),
+                        assigned_tickets_total=tech_data.get('assigned_tickets_total', 0),
+                        assigned_tickets=assigned_tickets,
                         skills=skills,
-                        availability=tech_data.get('availability_status', 'available'),
-                        rating=4.0,  # Default rating since it's not in the response
-                        experience_years=2,  # Default experience
-                        complexity_level='level_2',  # Default complexity
-                        current_workload=tech_data.get('workload', 0)
+                        workload=tech_data.get('workload', 0),
+                        availability_status=tech_data.get('availability_status', AvailabilityStatus.AVAILABLE),
+                        skill_level=tech_data.get('skill_level', SkillLevel.JUNIOR),
+                        specialization=tech_data.get('specialization'),
+                        is_active=tech_data.get('is_active', True),
+                        created_at=created_at,
+                        updated_at=updated_at
                     )
                     technicians.append(technician)
+                    
                 except Exception as e:
                     logger.warning(f"Failed to parse technician data: {tech_data}, error: {str(e)}")
                     continue
@@ -355,6 +404,18 @@ class AssignmentService:
         except Exception as e:
             logger.error(f"Error processing technicians response: {str(e)}")
             raise
+        
+    def _select_best_technician(self, technicians: List[Technician], extracted_skills: List[Skill], ticket: Ticket) -> Tuple[Optional[Technician], Optional[str]]:
+        """
+        Select the best technician based on the extracted skills
+        """
+
+        selected_technician, justification = self.technician_selection_service.select_technician_for_ticket(ticket, technicians, extracted_skills)
+
+        if selected_technician:
+            return selected_technician, justification
+        else:
+            return None, None
 
     def get_assignment_status(self) -> Dict[str, Any]:
         """
@@ -391,7 +452,7 @@ class AssignmentService:
         
         try:
             # Check required top-level fields
-            required_fields = ["ticket", "skills"]
+            required_fields = ["ticket"]
             for field in required_fields:
                 if field not in request_data:
                     validation_result["valid"] = False
@@ -432,15 +493,6 @@ class AssignmentService:
                     except (ValueError, TypeError):
                         validation_result["valid"] = False
                         validation_result["errors"].append("requester_id must be a valid integer")
-            
-            # Validate skills data if present
-            if "skills" in request_data:
-                skills_data = request_data["skills"]
-                if not isinstance(skills_data, list):
-                    validation_result["valid"] = False
-                    validation_result["errors"].append("'skills' must be a list")
-                elif len(skills_data) == 0:
-                    validation_result["warnings"].append("Skills list is empty")
             
         except Exception as e:
             validation_result["valid"] = False

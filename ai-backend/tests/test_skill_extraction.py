@@ -14,34 +14,23 @@ def test_skill_extraction():
     
     # Test data
     test_data = {
-        "ticket": {
-            "subject": "Network connectivity issues affecting multiple users",
-            "description": "Users unable to connect to corporate network. VPN connection failing and users cannot access shared drives.",
-            "requester_id": 101,
-            "priority": "high",
-            "impact": "high",
-            "urgency": "high",
-            "complexity_level": "level_2",
-            "tags": ["network", "vpn", "connectivity"]
-        },
-        "skills": [
-            "Network Troubleshooting",
-            "Windows Administration",
-            "Hardware Repair",
-            "Software Installation",
-            "VPN Configuration",
-            "Firewall Management",
-            "Database Management",
-            "Security Analysis",
-            "Linux Administration",
-            "Application Support"
-        ]
+       "ticket": {
+        "subject": "Laptop shows network connected but no internet access",
+        "description": "User reports that the laptop is connected to the corporate Wi-Fi network, but internet access is not working. Other devices on the same network are functioning normally. The issue persists across reboots and network reconnections, indicating a possible local DNS or IP configuration problem.",
+        "requester_id": 102,
+        "priority": "normal",
+        "impact": "medium",
+        "urgency": "normal",
+        "complexity_level": "level_1",
+        "tags": ["network", "wifi", "dns", "connectivity", "it-support"]
     }
+
+
+}
     
     print("🧪 Testing Skill Extraction")
     print("=" * 40)
     print(f"Ticket Subject: {test_data['ticket']['subject']}")
-    print(f"Available Skills: {len(test_data['skills'])} skills")
     print()
     
     try:

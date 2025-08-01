@@ -21,9 +21,9 @@ class Config:
     DEBUG = FLASK_ENV == 'development'
     
     # External API Configuration
-    BACKEND_SERVER_URL = os.getenv('BACKEND_SERVER_URL', 'http://localhost:5000')
-    SKILLS_API_URL = os.getenv('SKILLS_API_URL', 'http://localhost:5000/api/v1/skills/all')
-    TECHNICIANS_API_URL = os.getenv('TECHNICIANS_API_URL', 'http://localhost:5000/api/v1/technicians/search')
+    BACKEND_SERVER_URL = os.getenv('BACKEND_SERVER_URL', 'http://172.16.15.115:5000')
+    SKILLS_API_URL = os.getenv('SKILLS_API_URL', 'http://172.16.15.115:5000/api/v1/skills/all')
+    TECHNICIANS_API_URL = os.getenv('TECHNICIANS_API_URL', 'http://172.16.15.115:5000/api/v1/technicians/search')
     
     # Logging Configuration
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')

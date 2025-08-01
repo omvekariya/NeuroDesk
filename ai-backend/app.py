@@ -91,14 +91,7 @@ def ticket_assignment():
         "urgency": "high",
         "complexity_level": "level_2",
         "tags": ["network", "vpn", "connectivity"]
-      },
-      "skills": [
-        "Network Troubleshooting",
-        "Windows Administration",
-        "Hardware Repair",
-        "Software Installation",
-        "VPN Configuration"
-      ]
+      }
     }
     """
     try:
