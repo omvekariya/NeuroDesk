@@ -76,7 +76,7 @@ class TechnicianSelectionService:
                 - Justification must be detailed and pointwise. Each point starts on new line.
                 - Try to Justify the selection based on all the parameters you considered and keep it as detailed as possible. 
                 - Do Not involve the meta information like the ticket ID, rule number, Skill ID, etc. in the justification. Justification must not contain any Non-interpetable things.
-                - Justification must be Professional and presentable to the end-user.
+                - Justification must be strictly professional and presentable to the end-user.
 
                 
                 Example Output:
