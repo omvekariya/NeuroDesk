@@ -71,9 +71,13 @@ class TechnicianSelectionService:
                 - **Fallback**: If no junior or mid-level technicians are available or qualified, then evaluate experienced technicians using the same scoring logic.
 
                 Output Format:  
-                Your final output must be a single JSON object containing the ID of the chosen technician and a brief, clear with detailed & pointwise justification for your choice based on the rules.
-                Try to Justify the selection based on all the parameters you considered and keep it as detailed as possible. 
-                Do Not involve the meta information like the ticket ID, rule number, Skill ID, etc. in the justification. Justification must not contain any Non-interpetable things.
+                Your final output must be a single JSON object containing the ID of the chosen technician and a brief, clear with detailed & pointwise justification for your choice.
+                Instructions for Justification:
+                - Justification must be detailed and pointwise.
+                - Try to Justify the selection based on all the parameters you considered and keep it as detailed as possible. 
+                - Do Not involve the meta information like the ticket ID, rule number, Skill ID, etc. in the justification. Justification must not contain any Non-interpetable things.
+                - Justification must be presentable to the end-user.
+
                 
                 Example Output:
                 {{
