@@ -43,13 +43,28 @@ const getAllTechniciansSimple = async (req, res) => {
 
     // Skills filter - check if technician has any of the provided skills
     if (skills) {
-      const skillIds = Array.isArray(skills) ? skills : [skills];
-      const skillConditions = skillIds.map(skillId => 
-        `JSON_SEARCH(skills, 'one', '${skillId}', null, '$[*].id') IS NOT NULL`
-      );
+      const skillIds = Array.isArray(skills) ? skills.map(id => parseInt(id)) : [parseInt(skills)];
+      const { Sequelize } = require('sequelize');
+      const skillConditions = [];
+      
+      skillIds.forEach(skillId => {
+        // Use JSON_CONTAINS for better numeric ID matching
+        skillConditions.push(
+          Sequelize.literal(`JSON_CONTAINS(skills, '{"id": ${skillId}}', '$')`)
+        );
+        // Backup: string format
+        skillConditions.push(
+          Sequelize.literal(`JSON_CONTAINS(skills, '{"id": "${skillId}"}', '$')`)
+        );
+        // Alternative: extract IDs and check
+        skillConditions.push(
+          Sequelize.literal(`JSON_CONTAINS(JSON_EXTRACT(skills, '$[*].id'), '${skillId}')`)
+        );
+      });
+      
       whereClause[Op.and] = [
         ...(whereClause[Op.and] || []),
-        { [Op.or]: skillConditions.map(condition => ({ [Op.and]: [condition] })) }
+        { [Op.or]: skillConditions }
       ];
     }
 
@@ -173,13 +188,28 @@ const getAllTechnicians = async (req, res) => {
 
     // Skills filter - check if technician has any of the provided skills
     if (skills) {
-      const skillIds = Array.isArray(skills) ? skills : [skills];
-      const skillConditions = skillIds.map(skillId => 
-        `JSON_SEARCH(skills, 'one', '${skillId}', null, '$[*].id') IS NOT NULL`
-      );
+      const skillIds = Array.isArray(skills) ? skills.map(id => parseInt(id)) : [parseInt(skills)];
+      const { Sequelize } = require('sequelize');
+      const skillConditions = [];
+      
+      skillIds.forEach(skillId => {
+        // Use JSON_CONTAINS for better numeric ID matching
+        skillConditions.push(
+          Sequelize.literal(`JSON_CONTAINS(skills, '{"id": ${skillId}}', '$')`)
+        );
+        // Backup: string format
+        skillConditions.push(
+          Sequelize.literal(`JSON_CONTAINS(skills, '{"id": "${skillId}"}', '$')`)
+        );
+        // Alternative: extract IDs and check
+        skillConditions.push(
+          Sequelize.literal(`JSON_CONTAINS(JSON_EXTRACT(skills, '$[*].id'), '${skillId}')`)
+        );
+      });
+      
       whereClause[Op.and] = [
         ...(whereClause[Op.and] || []),
-        { [Op.or]: skillConditions.map(condition => ({ [Op.and]: [condition] })) }
+        { [Op.or]: skillConditions }
       ];
     }
 
@@ -581,7 +611,7 @@ const reactivateTechnician = async (req, res) => {
 // Get technicians by skills (union filter)
 const getTechniciansBySkills = async (req, res) => {
   try {
-    const { skills, page = 1, limit = 10 } = req.query;
+    const { skills, page = 1, limit = 10, debug = false } = req.query;
 
     if (!skills || (Array.isArray(skills) && skills.length === 0)) {
       return res.status(400).json({
@@ -590,21 +620,50 @@ const getTechniciansBySkills = async (req, res) => {
       });
     }
 
-    const skillIds = Array.isArray(skills) ? skills : [skills];
+    const skillIds = Array.isArray(skills) ? skills.map(id => parseInt(id)) : [parseInt(skills)];
     const offset = (parseInt(page) - 1) * parseInt(limit);
-    const { Op } = require('sequelize');
+    const { Op, Sequelize } = require('sequelize');
 
-    // Build skill filter conditions
-    const skillConditions = skillIds.map(skillId => 
-      `JSON_SEARCH(skills, 'one', '${skillId}', null, '$[*].id') IS NOT NULL`
-    );
+    // Build skill filter conditions - use JSON_CONTAINS for numeric IDs
+    const skillConditions = [];
+    
+    skillIds.forEach(skillId => {
+      // Use JSON_CONTAINS to check if the skill ID exists in the skills array
+      // This works better with numeric IDs in JSON
+      skillConditions.push(
+        Sequelize.literal(`JSON_CONTAINS(skills, '{"id": ${skillId}}', '$')`)
+      );
+      // Also try with string format as backup
+      skillConditions.push(
+        Sequelize.literal(`JSON_CONTAINS(skills, '{"id": "${skillId}"}', '$')`)
+      );
+      // Alternative: Use JSON_EXTRACT to get all IDs and check if our ID is in there
+      skillConditions.push(
+        Sequelize.literal(`JSON_CONTAINS(JSON_EXTRACT(skills, '$[*].id'), '${skillId}')`)
+      );
+    });
 
     const whereClause = {
       is_active: true,
       [Op.and]: [
-        { [Op.or]: skillConditions.map(condition => ({ [Op.and]: [condition] })) }
+        { [Op.or]: skillConditions }
       ]
     };
+
+    // Debug mode - also fetch all technicians to see their skills structure
+    if (debug === 'true') {
+      const allTechnicians = await Technician.findAll({
+        where: { is_active: true },
+        attributes: ['id', 'name', 'skills'],
+        limit: 5
+      });
+      
+      console.log('Debug - Sample technician skills structure:');
+      allTechnicians.forEach(tech => {
+        console.log(`Technician ${tech.id} (${tech.name}):`, JSON.stringify(tech.skills));
+      });
+      console.log('Searching for skill IDs:', skillIds);
+    }
 
     const { count, rows } = await Technician.findAndCountAll({
       where: whereClause,
@@ -655,6 +714,48 @@ const getTechniciansBySkills = async (req, res) => {
   }
 };
 
+
+// Debug endpoint to see all technicians and their skills
+const debugTechniciansSkills = async (req, res) => {
+  try {
+    const technicians = await Technician.findAll({
+      where: { is_active: true },
+      attributes: ['id', 'name', 'skills', 'availability_status'],
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'name', 'email']
+        }
+      ],
+      limit: 20
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Debug information for technicians and their skills',
+      data: {
+        technicians: technicians.map(tech => ({
+          id: tech.id,
+          name: tech.name,
+          skills: tech.skills,
+          availability_status: tech.availability_status,
+          user: tech.user
+        })),
+        total: technicians.length,
+        skillsStructureExample: "Skills should be in format: [{id: 50, percentage: 85}, {id: 60, percentage: 70}]"
+      }
+    });
+  } catch (error) {
+    console.error('Debug technicians skills error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching debug information',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllTechnicians,
   getAllTechniciansSimple,
@@ -664,5 +765,6 @@ module.exports = {
   deleteTechnician,
   permanentDeleteTechnician,
   reactivateTechnician,
-  getTechniciansBySkills
+  getTechniciansBySkills,
+  debugTechniciansSkills
 };

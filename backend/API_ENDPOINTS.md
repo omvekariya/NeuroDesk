@@ -713,10 +713,12 @@ http://localhost:5000/api/v1
 - `skills` (required): Skill IDs (comma-separated or array) - returns technicians with ANY of these skills
 - `page` (optional): Page number (default: 1, min: 1)
 - `limit` (optional): Items per page (default: 10, min: 1, max: 100)
+- `debug` (optional): Enable debug mode (true/false) - shows additional logging
 
 **Examples:**
 1. Get technicians with JavaScript or Python skills: `/technicians/by-skills?skills=1,2`
 2. With pagination: `/technicians/by-skills?skills=1,2,3&page=1&limit=5`
+3. With debug mode: `/technicians/by-skills?skills=50,60&debug=true`
 
 **Response:**
 ```json
@@ -761,7 +763,56 @@ http://localhost:5000/api/v1
 }
 ```
 
-### 4. Get Technician by ID
+### 4. Debug Technicians Skills
+**GET** `/technicians/debug-skills`
+
+**Description:** Debug endpoint to see all active technicians and their skills structure. Useful for troubleshooting skills filtering issues.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Debug information for technicians and their skills",
+  "data": {
+    "technicians": [
+      {
+        "id": 16,
+        "name": "Isla Fernandes",
+        "skills": [
+          {"id": 50, "percentage": 92},
+          {"id": 51, "percentage": 95},
+          {"id": 52, "percentage": 90},
+          {"id": 53, "percentage": 94}
+        ],
+        "availability_status": "busy",
+        "user": {
+          "id": 9,
+          "name": "Isla Fernandes",
+          "email": "isla@company.com"
+        }
+      },
+      {
+        "id": 17,
+        "name": "Jatin Reddy",
+        "skills": [
+          {"id": 60, "percentage": 80},
+          {"id": 61, "percentage": 85}
+        ],
+        "availability_status": "available",
+        "user": {
+          "id": 3,
+          "name": "Jatin Reddy",
+          "email": "jatin@company.com"
+        }
+      }
+    ],
+    "total": 2,
+    "skillsStructureExample": "Skills should be in format: [{id: 50, percentage: 85}, {id: 60, percentage: 70}]"
+  }
+}
+```
+
+### 5. Get Technician by ID
 **GET** `/technicians/:id`
 
 **Response:**
@@ -805,7 +856,7 @@ http://localhost:5000/api/v1
 }
 ```
 
-### 5. Create Technician
+### 6. Create Technician
 **POST** `/technicians`
 
 **Request Body:**
@@ -858,7 +909,7 @@ http://localhost:5000/api/v1
 }
 ```
 
-### 6. Update Technician
+### 7. Update Technician
 **PUT** `/technicians/:id`
 
 **Request Body (all fields optional):**
@@ -913,7 +964,7 @@ http://localhost:5000/api/v1
 }
 ```
 
-### 7. Soft Delete Technician (Deactivate)
+### 8. Soft Delete Technician (Deactivate)
 **DELETE** `/technicians/:id`
 
 **Response:**
@@ -924,7 +975,7 @@ http://localhost:5000/api/v1
 }
 ```
 
-### 8. Permanently Delete Technician
+### 9. Permanently Delete Technician
 **DELETE** `/technicians/:id/permanent`
 
 **Response:**
@@ -935,7 +986,7 @@ http://localhost:5000/api/v1
 }
 ```
 
-### 9. Reactivate Technician
+### 10. Reactivate Technician
 **PATCH** `/technicians/:id/reactivate`
 
 **Response:**
@@ -1789,6 +1840,16 @@ curl -X GET "http://localhost:5000/api/v1/technicians/all?availability_status=av
 15. **Get Technicians by Skills (Union Filter):**
 ```bash
 curl -X GET "http://localhost:5000/api/v1/technicians/by-skills?skills=1,2,3&page=1&limit=10"
+```
+
+**With debug mode:**
+```bash
+curl -X GET "http://localhost:5000/api/v1/technicians/by-skills?skills=50,60&debug=true"
+```
+
+**Debug endpoint to see all technicians skills:**
+```bash
+curl -X GET "http://localhost:5000/api/v1/technicians/debug-skills"
 ```
 
 16. **Get All Technicians (With Pagination):**

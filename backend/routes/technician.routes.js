@@ -9,7 +9,8 @@ const {
   deleteTechnician,
   permanentDeleteTechnician,
   reactivateTechnician,
-  getTechniciansBySkills
+  getTechniciansBySkills,
+  debugTechniciansSkills
 } = require('../controllers/technician.controller');
 
 const router = express.Router();
@@ -302,10 +303,24 @@ const getTechniciansBySkillsValidation = [
   query('limit')
     .optional()
     .isInt({ min: 1, max: 100 })
-    .withMessage('Limit must be between 1 and 100')
+    .withMessage('Limit must be between 1 and 100'),
+  
+  query('debug')
+    .optional()
+    .isIn(['true', 'false'])
+    .withMessage('Debug must be true or false')
 ];
 
+
+
 // Routes
+/**
+ * @route   GET /api/v1/technicians/debug-skills
+ * @desc    Debug endpoint to see all technicians and their skills structure
+ * @access  Public (should be protected in real app)
+ */
+router.get('/debug-skills', debugTechniciansSkills);
+
 /**
  * @route   GET /api/v1/technicians/all
  * @desc    Get all technicians without pagination (simple list)
@@ -318,7 +333,7 @@ router.get('/all', getAllTechniciansSimpleValidation, handleValidationErrors, ge
  * @route   GET /api/v1/technicians/by-skills
  * @desc    Get technicians by skills (union filter)
  * @access  Public (should be protected in real app)
- * @query   skills (required), page, limit
+ * @query   skills (required), page, limit, debug
  */
 router.get('/by-skills', getTechniciansBySkillsValidation, handleValidationErrors, getTechniciansBySkills);
 
