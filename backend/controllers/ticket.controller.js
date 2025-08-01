@@ -84,7 +84,7 @@ const getAllTicketsSimple = async (req, res) => {
     }
 
     // Validate sort fields
-    const allowedSortFields = ['id', 'subject', 'status', 'priority', 'urgency', 'impact', 'sla_violated', 'escalation_count', 'created_at', 'updated_at', 'resolution_due'];
+    const allowedSortFields = ['id', 'subject', 'status', 'priority', 'urgency', 'impact', 'sla_violated', 'escalation_count', 'satisfaction_rating', 'score', 'created_at', 'updated_at', 'resolution_due'];
     const sortField = allowedSortFields.includes(sort_by) ? sort_by : 'created_at';
     const sortDirection = ['ASC', 'DESC'].includes(sort_order.toUpperCase()) ? sort_order.toUpperCase() : 'DESC';
 
@@ -162,6 +162,8 @@ const getAllTickets = async (req, res) => {
       escalation_count_max,
       satisfaction_rating_min,
       satisfaction_rating_max,
+      score_min,
+      score_max,
       created_from,
       created_to,
       updated_from,
@@ -266,6 +268,13 @@ const getAllTickets = async (req, res) => {
       if (satisfaction_rating_max !== undefined) whereClause.satisfaction_rating[Op.lte] = parseInt(satisfaction_rating_max);
     }
 
+    // Score range filter
+    if (score_min !== undefined || score_max !== undefined) {
+      whereClause.score = {};
+      if (score_min !== undefined) whereClause.score[Op.gte] = parseFloat(score_min);
+      if (score_max !== undefined) whereClause.score[Op.lte] = parseFloat(score_max);
+    }
+
     // Date range filters
     if (created_from || created_to) {
       whereClause.created_at = {};
@@ -294,7 +303,7 @@ const getAllTickets = async (req, res) => {
     }
 
     // Validate sort fields
-    const allowedSortFields = ['id', 'subject', 'status', 'priority', 'urgency', 'impact', 'sla_violated', 'escalation_count', 'satisfaction_rating', 'created_at', 'updated_at', 'resolution_due'];
+    const allowedSortFields = ['id', 'subject', 'status', 'priority', 'urgency', 'impact', 'sla_violated', 'escalation_count', 'satisfaction_rating', 'score', 'created_at', 'updated_at', 'resolution_due'];
     const sortField = allowedSortFields.includes(sort_by) ? sort_by : 'created_at';
     const sortDirection = ['ASC', 'DESC'].includes(sort_order.toUpperCase()) ? sort_order.toUpperCase() : 'DESC';
 
@@ -360,6 +369,8 @@ const getAllTickets = async (req, res) => {
           escalation_count_max,
           satisfaction_rating_min,
           satisfaction_rating_max,
+          score_min,
+          score_max,
           created_from,
           created_to,
           updated_from,
@@ -610,7 +621,8 @@ const createTicket = async (req, res) => {
       assigned_technician_id,
       required_skills,
       tags,
-      resolution_due
+      resolution_due,
+      score
     } = req.body;
 
     // Check if requester exists
@@ -645,6 +657,17 @@ const createTicket = async (req, res) => {
       }
     }
 
+    // Validate score if provided
+    if (score !== undefined) {
+      const scoreNum = parseFloat(score);
+      if (isNaN(scoreNum) || scoreNum < 0.0 || scoreNum > 10.0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Score must be a number between 0.0 and 10.0'
+        });
+      }
+    }
+
     // Create ticket
     const newTicket = await Ticket.create({
       subject,
@@ -658,6 +681,7 @@ const createTicket = async (req, res) => {
       required_skills: required_skills || [],
       tags: tags || [],
       resolution_due: resolution_due ? new Date(resolution_due) : null,
+      score: score !== undefined ? parseFloat(score) : null,
       tasks: [],
       work_logs: [],
       audit_trail: [
@@ -726,6 +750,7 @@ const updateTicket = async (req, res) => {
       tasks,
       work_logs,
       satisfaction_rating,
+      score,
       feedback,
       sla_violated
     } = req.body;
@@ -761,6 +786,17 @@ const updateTicket = async (req, res) => {
       }
     }
 
+    // Validate score if provided
+    if (score !== undefined) {
+      const scoreNum = parseFloat(score);
+      if (isNaN(scoreNum) || scoreNum < 0.0 || scoreNum > 10.0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Score must be a number between 0.0 and 10.0'
+        });
+      }
+    }
+
     // Prepare update data
     const updateData = {};
     if (subject) updateData.subject = subject;
@@ -786,6 +822,7 @@ const updateTicket = async (req, res) => {
     if (tasks !== undefined) updateData.tasks = tasks;
     if (work_logs !== undefined) updateData.work_logs = work_logs;
     if (satisfaction_rating !== undefined) updateData.satisfaction_rating = satisfaction_rating;
+    if (score !== undefined) updateData.score = parseFloat(score);
     if (feedback !== undefined) updateData.feedback = feedback;
     if (sla_violated !== undefined) updateData.sla_violated = sla_violated;
 

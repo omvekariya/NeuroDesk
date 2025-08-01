@@ -147,6 +147,14 @@ module.exports = (sequelize, DataTypes) => {
         max: 5
       }
     },
+    score: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
+      validate: {
+        min: 0.0,
+        max: 10.0
+      }
+    },
     feedback: {
       type: DataTypes.TEXT,
       allowNull: true

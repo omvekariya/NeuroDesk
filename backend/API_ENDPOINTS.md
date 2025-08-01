@@ -1036,7 +1036,7 @@ http://localhost:5000/api/v1
 - `assigned_technician_id` (optional): Filter by assigned technician ID
 - `requester_id` (optional): Filter by requester user ID
 - `required_skills` (optional): Filter by required skill IDs (comma-separated or array) - returns tickets requiring ANY of these skills
-- `sort_by` (optional): Sort by field (id, subject, status, priority, urgency, impact, sla_violated, escalation_count, created_at, updated_at, resolution_due) (default: created_at)
+- `sort_by` (optional): Sort by field (id, subject, status, priority, urgency, impact, sla_violated, escalation_count, satisfaction_rating, score, created_at, updated_at, resolution_due) (default: created_at)
 - `sort_order` (optional): Sort order (ASC, DESC) (default: DESC)
 
 **Examples:**
@@ -1126,6 +1126,8 @@ http://localhost:5000/api/v1
 - `escalation_count_max` (optional): Filter by maximum escalation count
 - `satisfaction_rating_min` (optional): Filter by minimum satisfaction rating (1-5)
 - `satisfaction_rating_max` (optional): Filter by maximum satisfaction rating (1-5)
+- `score_min` (optional): Filter by minimum score (0.0-10.0)
+- `score_max` (optional): Filter by maximum score (0.0-10.0)
 - `created_from` (optional): Filter by creation date from (ISO8601 format)
 - `created_to` (optional): Filter by creation date to (ISO8601 format)
 - `updated_from` (optional): Filter by update date from (ISO8601 format)
@@ -1135,7 +1137,7 @@ http://localhost:5000/api/v1
 - `search` (optional): Global search across subject and description
 
 **Sorting:**
-- `sort_by` (optional): Sort by field (id, subject, status, priority, urgency, impact, sla_violated, escalation_count, satisfaction_rating, created_at, updated_at, resolution_due) (default: created_at)
+- `sort_by` (optional): Sort by field (id, subject, status, priority, urgency, impact, sla_violated, escalation_count, satisfaction_rating, score, created_at, updated_at, resolution_due) (default: created_at)
 - `sort_order` (optional): Sort order (ASC, DESC) (default: DESC)
 
 **Examples:**
@@ -1144,6 +1146,7 @@ http://localhost:5000/api/v1
 3. Search tickets: `/tickets?search=email`
 4. Filter by date range: `/tickets?created_from=2024-01-01&created_to=2024-01-31`
 5. Filter by skills and technician: `/tickets?required_skills=1,2&assigned_technician_id=1`
+6. Filter by score range: `/tickets?score_min=7.0&score_max=10.0&sort_by=score&sort_order=DESC`
 
 **Response:**
 ```json
@@ -1163,6 +1166,7 @@ http://localhost:5000/api/v1
         "resolution_due": "2024-01-02T09:00:00.000Z",
         "escalation_count": 0,
         "satisfaction_rating": null,
+        "score": null,
         "feedback": null,
         "required_skills": [1, 2],
         "tags": ["email", "access"],
@@ -1483,7 +1487,8 @@ http://localhost:5000/api/v1
   "assigned_technician_id": 1,
   "required_skills": [1, 2],
   "tags": ["email", "access"],
-  "resolution_due": "2024-01-02T09:00:00.000Z"
+  "resolution_due": "2024-01-02T09:00:00.000Z",
+  "score": 7.5
 }
 ```
 
@@ -1571,6 +1576,7 @@ http://localhost:5000/api/v1
     }
   ],
   "satisfaction_rating": 5,
+  "score": 9.2,
   "feedback": "Excellent service, very quick resolution"
 }
 ```
@@ -1588,6 +1594,7 @@ http://localhost:5000/api/v1
     "priority": "normal",
     "resolved_at": "2024-01-01T10:30:00.000Z",
     "satisfaction_rating": 5,
+    "score": 9.2,
     "feedback": "Excellent service, very quick resolution",
     "created_at": "2024-01-01T09:00:00.000Z",
     "updated_at": "2024-01-01T10:30:00.000Z",
@@ -1972,6 +1979,11 @@ curl -X GET "http://localhost:5000/api/v1/tickets?search=email&page=1&limit=5"
 30. **Filter Tickets by SLA and Date:**
 ```bash
 curl -X GET "http://localhost:5000/api/v1/tickets?sla_violated=true&created_from=2024-01-01&resolution_due_to=2024-01-31"
+```
+
+31. **Filter Tickets by Score Range:**
+```bash
+curl -X GET "http://localhost:5000/api/v1/tickets?score_min=7.0&score_max=10.0&sort_by=score&sort_order=DESC"
 ```
 
 ## Advanced Filtering Guide

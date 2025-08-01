@@ -92,7 +92,12 @@ const createTicketValidation = [
   body('resolution_due')
     .optional()
     .isISO8601()
-    .withMessage('Resolution due must be a valid date')
+    .withMessage('Resolution due must be a valid date'),
+  
+  body('score')
+    .optional()
+    .isFloat({ min: 0.0, max: 10.0 })
+    .withMessage('Score must be a number between 0.0 and 10.0')
 ];
 
 // Update ticket validation rules
@@ -171,6 +176,11 @@ const updateTicketValidation = [
     .optional()
     .isInt({ min: 1, max: 5 })
     .withMessage('Satisfaction rating must be between 1 and 5'),
+  
+  body('score')
+    .optional()
+    .isFloat({ min: 0.0, max: 10.0 })
+    .withMessage('Score must be a number between 0.0 and 10.0'),
   
   body('feedback')
     .optional()
@@ -273,6 +283,16 @@ const getAllTicketsValidation = [
     .optional()
     .isInt({ min: 1, max: 5 })
     .withMessage('Satisfaction rating max must be between 1 and 5'),
+  
+  query('score_min')
+    .optional()
+    .isFloat({ min: 0.0, max: 10.0 })
+    .withMessage('Score min must be between 0.0 and 10.0'),
+  
+  query('score_max')
+    .optional()
+    .isFloat({ min: 0.0, max: 10.0 })
+    .withMessage('Score max must be between 0.0 and 10.0'),
   
   query('created_from')
     .optional()
