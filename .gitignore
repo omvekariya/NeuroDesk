@@ -1,0 +1,5 @@
+#ignore venv
+/ai-backend/venv
+
+#ignore ai-backend/.env
+/ai-backend/.env
