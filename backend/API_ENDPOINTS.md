@@ -1488,7 +1488,8 @@ http://localhost:5000/api/v1
   "required_skills": [1, 2],
   "tags": ["email", "access"],
   "resolution_due": "2024-01-02T09:00:00.000Z",
-  "score": 7.5
+  "score": 7.5,
+  "justification": "Standard email access issue requiring basic troubleshooting skills"
 }
 ```
 
@@ -1510,6 +1511,8 @@ http://localhost:5000/api/v1
     "escalation_count": 0,
     "required_skills": [1, 2],
     "tags": ["email", "access"],
+    "score": 7.5,
+    "justification": "Standard email access issue requiring basic troubleshooting skills",
     "tasks": [],
     "work_logs": [],
     "audit_trail": [
@@ -1577,6 +1580,7 @@ http://localhost:5000/api/v1
   ],
   "satisfaction_rating": 5,
   "score": 9.2,
+  "justification": "Issue resolved through server configuration update",
   "feedback": "Excellent service, very quick resolution"
 }
 ```
@@ -1595,6 +1599,7 @@ http://localhost:5000/api/v1
     "resolved_at": "2024-01-01T10:30:00.000Z",
     "satisfaction_rating": 5,
     "score": 9.2,
+    "justification": "Issue resolved through server configuration update",
     "feedback": "Excellent service, very quick resolution",
     "created_at": "2024-01-01T09:00:00.000Z",
     "updated_at": "2024-01-01T10:30:00.000Z",
@@ -1949,7 +1954,9 @@ curl -X POST http://localhost:5000/api/v1/tickets \
     "assigned_technician_id": 1,
     "required_skills": [1, 2],
     "tags": ["email", "access"],
-    "resolution_due": "2024-01-02T09:00:00.000Z"
+    "resolution_due": "2024-01-02T09:00:00.000Z",
+    "score": 7.5,
+    "justification": "Standard email access issue requiring basic troubleshooting skills"
   }'
 ```
 
@@ -1960,6 +1967,8 @@ curl -X PUT http://localhost:5000/api/v1/tickets/1 \
   -d '{
     "status": "resolved",
     "satisfaction_rating": 5,
+    "score": 9.2,
+    "justification": "Issue resolved through server configuration update",
     "feedback": "Excellent service, very quick resolution",
     "tasks": [
       {

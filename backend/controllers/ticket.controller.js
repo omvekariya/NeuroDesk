@@ -84,7 +84,7 @@ const getAllTicketsSimple = async (req, res) => {
     }
 
     // Validate sort fields
-    const allowedSortFields = ['id', 'subject', 'status', 'priority', 'urgency', 'impact', 'sla_violated', 'escalation_count', 'satisfaction_rating', 'score', 'created_at', 'updated_at', 'resolution_due'];
+    const allowedSortFields = ['id', 'subject', 'status', 'priority', 'urgency', 'impact', 'sla_violated', 'escalation_count', 'satisfaction_rating', 'score', 'justification', 'created_at', 'updated_at', 'resolution_due'];
     const sortField = allowedSortFields.includes(sort_by) ? sort_by : 'created_at';
     const sortDirection = ['ASC', 'DESC'].includes(sort_order.toUpperCase()) ? sort_order.toUpperCase() : 'DESC';
 
@@ -303,7 +303,7 @@ const getAllTickets = async (req, res) => {
     }
 
     // Validate sort fields
-    const allowedSortFields = ['id', 'subject', 'status', 'priority', 'urgency', 'impact', 'sla_violated', 'escalation_count', 'satisfaction_rating', 'score', 'created_at', 'updated_at', 'resolution_due'];
+    const allowedSortFields = ['id', 'subject', 'status', 'priority', 'urgency', 'impact', 'sla_violated', 'escalation_count', 'satisfaction_rating', 'score', 'justification', 'created_at', 'updated_at', 'resolution_due'];
     const sortField = allowedSortFields.includes(sort_by) ? sort_by : 'created_at';
     const sortDirection = ['ASC', 'DESC'].includes(sort_order.toUpperCase()) ? sort_order.toUpperCase() : 'DESC';
 
@@ -622,7 +622,8 @@ const createTicket = async (req, res) => {
       required_skills,
       tags,
       resolution_due,
-      score
+      score,
+      justification
     } = req.body;
 
     // Check if requester exists
@@ -668,6 +669,14 @@ const createTicket = async (req, res) => {
       }
     }
 
+    // Validate justification if provided
+    if (justification !== undefined && justification.length > 1000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Justification must be less than 1000 characters'
+      });
+    }
+
     // Create ticket
     const newTicket = await Ticket.create({
       subject,
@@ -682,6 +691,7 @@ const createTicket = async (req, res) => {
       tags: tags || [],
       resolution_due: resolution_due ? new Date(resolution_due) : null,
       score: score !== undefined ? parseFloat(score) : null,
+      justification: justification || null,
       tasks: [],
       work_logs: [],
       audit_trail: [
@@ -751,6 +761,7 @@ const updateTicket = async (req, res) => {
       work_logs,
       satisfaction_rating,
       score,
+      justification,
       feedback,
       sla_violated
     } = req.body;
@@ -797,6 +808,14 @@ const updateTicket = async (req, res) => {
       }
     }
 
+    // Validate justification if provided
+    if (justification !== undefined && justification.length > 1000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Justification must be less than 1000 characters'
+      });
+    }
+
     // Prepare update data
     const updateData = {};
     if (subject) updateData.subject = subject;
@@ -823,6 +842,7 @@ const updateTicket = async (req, res) => {
     if (work_logs !== undefined) updateData.work_logs = work_logs;
     if (satisfaction_rating !== undefined) updateData.satisfaction_rating = satisfaction_rating;
     if (score !== undefined) updateData.score = parseFloat(score);
+    if (justification !== undefined) updateData.justification = justification;
     if (feedback !== undefined) updateData.feedback = feedback;
     if (sla_violated !== undefined) updateData.sla_violated = sla_violated;
 
