@@ -11,6 +11,7 @@ import requests
 # Import our custom modules
 from config.settings import Config
 from services.assignment_service import AssignmentService
+from services.evaluation_service import EvaluationService
 
 # Configure logging
 logging.basicConfig(
@@ -201,7 +202,6 @@ def evaluate_skills():
             return jsonify({"error": "Content-Type must be application/json"}), 400
         
         data = request.get_json()
-        
         # Validate request has ticket data
         if 'ticket' not in data:
             return jsonify({"error": "Request must include ticket data"}), 400
@@ -216,10 +216,10 @@ def evaluate_skills():
                 "error": "Missing required fields",
                 "missing": missing_fields
             }), 400
-        
+        evaluationService=EvaluationService(llm)
         # Get technicians data
         try:
-            technicians = evaluation_service.get_technicians()
+            technicians = evaluationService.get_technicians()
             technician = next(
                 (t for t in technicians if t['id'] == ticket['assigned_technician_id']), 
                 None
@@ -235,20 +235,22 @@ def evaluate_skills():
                 "message": str(e)
             }), 500
         
-        # Extract skills from ticket
-        extracted_skills = evaluation_service.extract_skills_from_ticket(ticket)
+        metrics = evaluationService.calculate_metrics(ticket)
         
         # Update technician skills
-        result = evaluation_service.update_technician_skills(
+        result = evaluationService.update_technician_skills(
             technician_id=ticket['assigned_technician_id'],
             current_skills=technician.get('skills', []),
-            new_skills=extracted_skills
+            ticket_metrics=metrics
         )
         
         return jsonify({
             "success": True,
             "message": "Skills evaluated successfully",
-            "data": result.model_dump()
+            "data": {
+                "technician": result,
+                "metrics": metrics.model_dump()
+            }
         })
         
     except Exception as e:
