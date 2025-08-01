@@ -971,6 +971,652 @@ http://localhost:5000/api/v1
 }
 ```
 
+## Tickets Management Endpoints
+
+### 1. Get All Tickets (Simple - No Pagination)
+**GET** `/tickets/all`
+
+**Query Parameters:**
+- `status` (optional): Filter by status (new, assigned, in_progress, on_hold, resolved, closed, cancelled)
+- `priority` (optional): Filter by priority (low, normal, high, critical)
+- `urgency` (optional): Filter by urgency (low, normal, high, critical)
+- `impact` (optional): Filter by impact (low, medium, high, critical)
+- `sla_violated` (optional): Filter by SLA violation (true/false)
+- `assigned_technician_id` (optional): Filter by assigned technician ID
+- `requester_id` (optional): Filter by requester user ID
+- `required_skills` (optional): Filter by required skill IDs (comma-separated or array) - returns tickets requiring ANY of these skills
+- `sort_by` (optional): Sort by field (id, subject, status, priority, urgency, impact, sla_violated, escalation_count, created_at, updated_at, resolution_due) (default: created_at)
+- `sort_order` (optional): Sort order (ASC, DESC) (default: DESC)
+
+**Examples:**
+1. Get all open tickets: `/tickets/all?status=new,assigned,in_progress`
+2. Get high priority tickets: `/tickets/all?priority=high,critical&sort_by=priority&sort_order=DESC`
+3. Get tickets requiring specific skills: `/tickets/all?required_skills=1,2,3`
+4. Get SLA violated tickets: `/tickets/all?sla_violated=true&sort_by=resolution_due&sort_order=ASC`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "tickets": [
+      {
+        "id": 1,
+        "subject": "Unable to access email",
+        "description": "User cannot log into their email account",
+        "status": "new",
+        "priority": "normal",
+        "urgency": "normal",
+        "impact": "medium",
+        "sla_violated": false,
+        "resolution_due": "2024-01-02T09:00:00.000Z",
+        "escalation_count": 0,
+        "required_skills": [1, 2],
+        "tags": ["email", "access"],
+        "created_at": "2024-01-01T09:00:00.000Z",
+        "updated_at": "2024-01-01T09:00:00.000Z",
+        "requester": {
+          "id": 3,
+          "name": "John User",
+          "email": "john.user@company.com",
+          "department": "Sales"
+        },
+        "assigned_technician": {
+          "id": 1,
+          "name": "Jane Tech",
+          "skill_level": "senior",
+          "availability_status": "available",
+          "user": {
+            "id": 2,
+            "name": "Jane Tech",
+            "email": "jane.tech@company.com"
+          }
+        }
+      }
+    ],
+    "total": 1,
+    "filters": {
+      "status": "new",
+      "priority": null,
+      "urgency": null,
+      "impact": null,
+      "sla_violated": null,
+      "assigned_technician_id": null,
+      "requester_id": null,
+      "required_skills": null,
+      "sort_by": "created_at",
+      "sort_order": "DESC"
+    }
+  }
+}
+```
+
+### 2. Get All Tickets (With Pagination)
+**GET** `/tickets`
+
+**Query Parameters:**
+
+**Pagination:**
+- `page` (optional): Page number (default: 1, min: 1)
+- `limit` (optional): Items per page (default: 10, min: 1, max: 100)
+
+**Filters:**
+- `subject` (optional): Filter by subject (partial match)
+- `description` (optional): Filter by description (partial match)
+- `status` (optional): Filter by status
+- `priority` (optional): Filter by priority
+- `urgency` (optional): Filter by urgency
+- `impact` (optional): Filter by impact
+- `sla_violated` (optional): Filter by SLA violation (true/false)
+- `assigned_technician_id` (optional): Filter by assigned technician ID
+- `requester_id` (optional): Filter by requester user ID
+- `required_skills` (optional): Filter by required skill IDs (union filter - ANY of these skills)
+- `escalation_count_min` (optional): Filter by minimum escalation count
+- `escalation_count_max` (optional): Filter by maximum escalation count
+- `satisfaction_rating_min` (optional): Filter by minimum satisfaction rating (1-5)
+- `satisfaction_rating_max` (optional): Filter by maximum satisfaction rating (1-5)
+- `created_from` (optional): Filter by creation date from (ISO8601 format)
+- `created_to` (optional): Filter by creation date to (ISO8601 format)
+- `updated_from` (optional): Filter by update date from (ISO8601 format)
+- `updated_to` (optional): Filter by update date to (ISO8601 format)
+- `resolution_due_from` (optional): Filter by resolution due date from (ISO8601 format)
+- `resolution_due_to` (optional): Filter by resolution due date to (ISO8601 format)
+- `search` (optional): Global search across subject and description
+
+**Sorting:**
+- `sort_by` (optional): Sort by field (id, subject, status, priority, urgency, impact, sla_violated, escalation_count, satisfaction_rating, created_at, updated_at, resolution_due) (default: created_at)
+- `sort_order` (optional): Sort order (ASC, DESC) (default: DESC)
+
+**Examples:**
+1. Basic pagination: `/tickets?page=1&limit=5`
+2. Filter high priority unresolved: `/tickets?priority=high,critical&status=new,assigned,in_progress`
+3. Search tickets: `/tickets?search=email`
+4. Filter by date range: `/tickets?created_from=2024-01-01&created_to=2024-01-31`
+5. Filter by skills and technician: `/tickets?required_skills=1,2&assigned_technician_id=1`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "tickets": [
+      {
+        "id": 1,
+        "subject": "Unable to access email",
+        "description": "User cannot log into their email account",
+        "status": "assigned",
+        "priority": "normal",
+        "urgency": "normal",
+        "impact": "medium",
+        "sla_violated": false,
+        "resolution_due": "2024-01-02T09:00:00.000Z",
+        "escalation_count": 0,
+        "satisfaction_rating": null,
+        "feedback": null,
+        "required_skills": [1, 2],
+        "tags": ["email", "access"],
+        "tasks": [],
+        "created_at": "2024-01-01T09:00:00.000Z",
+        "updated_at": "2024-01-01T09:30:00.000Z",
+        "requester": {
+          "id": 3,
+          "name": "John User",
+          "email": "john.user@company.com",
+          "department": "Sales"
+        },
+        "assigned_technician": {
+          "id": 1,
+          "name": "Jane Tech",
+          "skill_level": "senior",
+          "availability_status": "busy",
+          "user": {
+            "id": 2,
+            "name": "Jane Tech",
+            "email": "jane.tech@company.com"
+          }
+        }
+      }
+    ],
+    "pagination": {
+      "total": 25,
+      "page": 1,
+      "limit": 10,
+      "totalPages": 3,
+      "hasNextPage": true,
+      "hasPrevPage": false,
+      "nextPage": 2,
+      "prevPage": null
+    },
+    "filters": {
+      "subject": null,
+      "description": null,
+      "status": "assigned",
+      "priority": "normal",
+      "urgency": null,
+      "impact": null,
+      "sla_violated": null,
+      "assigned_technician_id": null,
+      "requester_id": null,
+      "required_skills": null,
+      "search": null,
+      "sort_by": "created_at",
+      "sort_order": "DESC"
+    }
+  }
+}
+```
+
+### 3. Get Tickets by Required Skills (Union Filter)
+**GET** `/tickets/by-skills`
+
+**Query Parameters:**
+- `skills` (required): Skill IDs (comma-separated or array) - returns tickets requiring ANY of these skills
+- `page` (optional): Page number (default: 1, min: 1)
+- `limit` (optional): Items per page (default: 10, min: 1, max: 100)
+- `status` (optional): Filter by status
+
+**Examples:**
+1. Get tickets requiring JavaScript or Python skills: `/tickets/by-skills?skills=1,2`
+2. With status filter: `/tickets/by-skills?skills=1,2,3&status=new,assigned&page=1&limit=5`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "tickets": [
+      {
+        "id": 1,
+        "subject": "Website debugging needed",
+        "description": "Frontend issues with user interface",
+        "status": "new",
+        "priority": "high",
+        "required_skills": [1, 3],
+        "requester": {
+          "id": 3,
+          "name": "John User",
+          "email": "john.user@company.com",
+          "department": "Sales"
+        },
+        "assigned_technician": null
+      }
+    ],
+    "pagination": {
+      "total": 8,
+      "page": 1,
+      "limit": 10,
+      "totalPages": 1,
+      "hasNextPage": false,
+      "hasPrevPage": false,
+      "nextPage": null,
+      "prevPage": null
+    },
+    "filters": {
+      "required_skills": ["1", "2"],
+      "status": null
+    }
+  }
+}
+```
+
+### 4. Get Tickets by User ID (Requester)
+**GET** `/tickets/user/:userId`
+
+**Query Parameters:**
+- `page` (optional): Page number (default: 1, min: 1)
+- `limit` (optional): Items per page (default: 10, min: 1, max: 100)
+- `status` (optional): Filter by status
+- `priority` (optional): Filter by priority
+
+**Examples:**
+1. Get all tickets for user 3: `/tickets/user/3`
+2. Get open tickets for user 3: `/tickets/user/3?status=new,assigned,in_progress`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "tickets": [
+      {
+        "id": 1,
+        "subject": "Unable to access email",
+        "status": "assigned",
+        "priority": "normal",
+        "created_at": "2024-01-01T09:00:00.000Z",
+        "assigned_technician": {
+          "id": 1,
+          "name": "Jane Tech",
+          "skill_level": "senior",
+          "user": {
+            "id": 2,
+            "name": "Jane Tech",
+            "email": "jane.tech@company.com"
+          }
+        }
+      }
+    ],
+    "pagination": {
+      "total": 5,
+      "page": 1,
+      "limit": 10,
+      "totalPages": 1,
+      "hasNextPage": false,
+      "hasPrevPage": false,
+      "nextPage": null,
+      "prevPage": null
+    },
+    "filters": {
+      "requester_id": "3",
+      "status": null,
+      "priority": null
+    }
+  }
+}
+```
+
+### 5. Get Tickets by Technician ID (Assigned)
+**GET** `/tickets/technician/:technicianId`
+
+**Query Parameters:**
+- `page` (optional): Page number (default: 1, min: 1)
+- `limit` (optional): Items per page (default: 10, min: 1, max: 100)
+- `status` (optional): Filter by status
+- `priority` (optional): Filter by priority
+
+**Examples:**
+1. Get all tickets for technician 1: `/tickets/technician/1`
+2. Get active tickets for technician 1: `/tickets/technician/1?status=assigned,in_progress`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "tickets": [
+      {
+        "id": 1,
+        "subject": "Unable to access email",
+        "status": "in_progress",
+        "priority": "normal",
+        "created_at": "2024-01-01T09:00:00.000Z",
+        "requester": {
+          "id": 3,
+          "name": "John User",
+          "email": "john.user@company.com",
+          "department": "Sales"
+        }
+      }
+    ],
+    "pagination": {
+      "total": 3,
+      "page": 1,
+      "limit": 10,
+      "totalPages": 1,
+      "hasNextPage": false,
+      "hasPrevPage": false,
+      "nextPage": null,
+      "prevPage": null
+    },
+    "filters": {
+      "assigned_technician_id": "1",
+      "status": null,
+      "priority": null
+    }
+  }
+}
+```
+
+### 6. Get Ticket by ID
+**GET** `/tickets/:id`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "subject": "Unable to access email",
+    "description": "User cannot log into their email account. Error message shows 'Authentication failed'.",
+    "status": "in_progress",
+    "priority": "normal",
+    "urgency": "normal",
+    "impact": "medium",
+    "sla_violated": false,
+    "resolution_due": "2024-01-02T09:00:00.000Z",
+    "resolution_date": null,
+    "first_response_time": 15,
+    "response_time": 15,
+    "resolution_time": null,
+    "escalation_count": 0,
+    "required_skills": [1, 2],
+    "tags": ["email", "access", "authentication"],
+    "tasks": [
+      {
+        "sub": "Check user credentials",
+        "status": "completed",
+        "description": "Verified user credentials are correct"
+      },
+      {
+        "sub": "Check email server",
+        "status": "in_progress",
+        "description": "Investigating server connectivity"
+      }
+    ],
+    "work_logs": [
+      {
+        "timestamp": "2024-01-01T09:15:00.000Z",
+        "technician_id": 1,
+        "notes": "Initial assessment completed",
+        "time_spent": 15
+      }
+    ],
+    "audit_trail": [
+      {
+        "action": "created",
+        "timestamp": "2024-01-01T09:00:00.000Z",
+        "user_id": 3,
+        "details": "Ticket created"
+      },
+      {
+        "action": "assigned",
+        "timestamp": "2024-01-01T09:05:00.000Z",
+        "user_id": 1,
+        "details": "Assigned to technician"
+      }
+    ],
+    "first_response_at": "2024-01-01T09:15:00.000Z",
+    "resolved_at": null,
+    "closed_at": null,
+    "reopened_count": 0,
+    "satisfaction_rating": null,
+    "feedback": null,
+    "created_at": "2024-01-01T09:00:00.000Z",
+    "updated_at": "2024-01-01T10:00:00.000Z",
+    "requester": {
+      "id": 3,
+      "name": "John User",
+      "email": "john.user@company.com",
+      "department": "Sales",
+      "contact_no": "1234567890"
+    },
+    "assigned_technician": {
+      "id": 1,
+      "name": "Jane Tech",
+      "skill_level": "senior",
+      "availability_status": "busy",
+      "specialization": "Email Systems",
+      "user": {
+        "id": 2,
+        "name": "Jane Tech",
+        "email": "jane.tech@company.com",
+        "contact_no": "0987654321"
+      }
+    }
+  }
+}
+```
+
+### 7. Create Ticket
+**POST** `/tickets`
+
+**Request Body:**
+```json
+{
+  "subject": "Unable to access email",
+  "description": "User cannot log into their email account. Error shows authentication failed.",
+  "priority": "normal",
+  "impact": "medium",
+  "urgency": "normal",
+  "requester_id": 3,
+  "assigned_technician_id": 1,
+  "required_skills": [1, 2],
+  "tags": ["email", "access"],
+  "resolution_due": "2024-01-02T09:00:00.000Z"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Ticket created successfully",
+  "data": {
+    "id": 1,
+    "subject": "Unable to access email",
+    "description": "User cannot log into their email account. Error shows authentication failed.",
+    "status": "assigned",
+    "priority": "normal",
+    "impact": "medium",
+    "urgency": "normal",
+    "sla_violated": false,
+    "resolution_due": "2024-01-02T09:00:00.000Z",
+    "escalation_count": 0,
+    "required_skills": [1, 2],
+    "tags": ["email", "access"],
+    "tasks": [],
+    "work_logs": [],
+    "audit_trail": [
+      {
+        "action": "created",
+        "timestamp": "2024-01-01T09:00:00.000Z",
+        "user_id": 3,
+        "details": "Ticket created"
+      }
+    ],
+    "created_at": "2024-01-01T09:00:00.000Z",
+    "updated_at": "2024-01-01T09:00:00.000Z",
+    "requester": {
+      "id": 3,
+      "name": "John User",
+      "email": "john.user@company.com",
+      "department": "Sales"
+    },
+    "assigned_technician": {
+      "id": 1,
+      "name": "Jane Tech",
+      "skill_level": "senior",
+      "user": {
+        "id": 2,
+        "name": "Jane Tech",
+        "email": "jane.tech@company.com"
+      }
+    }
+  }
+}
+```
+
+### 8. Update Ticket
+**PUT** `/tickets/:id`
+
+**Request Body (all fields optional):**
+```json
+{
+  "subject": "Email access issue - RESOLVED",
+  "description": "User cannot log into their email account. Issue was with server configuration.",
+  "status": "resolved",
+  "priority": "normal",
+  "assigned_technician_id": 1,
+  "required_skills": [1, 2],
+  "tags": ["email", "access", "resolved"],
+  "tasks": [
+    {
+      "sub": "Check user credentials",
+      "status": "completed",
+      "description": "Verified user credentials are correct"
+    },
+    {
+      "sub": "Fix server configuration",
+      "status": "completed",
+      "description": "Updated email server settings"
+    }
+  ],
+  "work_logs": [
+    {
+      "timestamp": "2024-01-01T10:30:00.000Z",
+      "technician_id": 1,
+      "notes": "Fixed server configuration issue",
+      "time_spent": 30
+    }
+  ],
+  "satisfaction_rating": 5,
+  "feedback": "Excellent service, very quick resolution"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Ticket updated successfully",
+  "data": {
+    "id": 1,
+    "subject": "Email access issue - RESOLVED",
+    "description": "User cannot log into their email account. Issue was with server configuration.",
+    "status": "resolved",
+    "priority": "normal",
+    "resolved_at": "2024-01-01T10:30:00.000Z",
+    "satisfaction_rating": 5,
+    "feedback": "Excellent service, very quick resolution",
+    "created_at": "2024-01-01T09:00:00.000Z",
+    "updated_at": "2024-01-01T10:30:00.000Z",
+    "requester": {
+      "id": 3,
+      "name": "John User",
+      "email": "john.user@company.com",
+      "department": "Sales"
+    },
+    "assigned_technician": {
+      "id": 1,
+      "name": "Jane Tech",
+      "skill_level": "senior",
+      "user": {
+        "id": 2,
+        "name": "Jane Tech",
+        "email": "jane.tech@company.com"
+      }
+    }
+  }
+}
+```
+
+### 9. Soft Delete Ticket (Cancel)
+**DELETE** `/tickets/:id`
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Ticket cancelled successfully"
+}
+```
+
+### 10. Permanently Delete Ticket
+**DELETE** `/tickets/:id/permanent`
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Ticket permanently deleted"
+}
+```
+
+### 11. Reactivate Ticket
+**PATCH** `/tickets/:id/reactivate`
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Ticket reactivated successfully",
+  "data": {
+    "id": 1,
+    "subject": "Unable to access email",
+    "status": "new",
+    "priority": "normal",
+    "created_at": "2024-01-01T09:00:00.000Z",
+    "updated_at": "2024-01-01T11:00:00.000Z",
+    "requester": {
+      "id": 3,
+      "name": "John User",
+      "email": "john.user@company.com",
+      "department": "Sales"
+    },
+    "assigned_technician": {
+      "id": 1,
+      "name": "Jane Tech",
+      "skill_level": "senior",
+      "user": {
+        "id": 2,
+        "name": "Jane Tech",
+        "email": "jane.tech@company.com"
+      }
+    }
+  }
+}
+```
+
 ## System Endpoints
 
 ### Health Check
@@ -1189,6 +1835,82 @@ curl -X GET "http://localhost:5000/api/v1/technicians?search=network&page=1&limi
 20. **Filter Technicians by Workload:**
 ```bash
 curl -X GET "http://localhost:5000/api/v1/technicians?workload_min=0&workload_max=50&availability_status=available"
+```
+
+21. **Get All Tickets (Simple):**
+```bash
+curl -X GET http://localhost:5000/api/v1/tickets/all
+```
+
+22. **Get High Priority Tickets:**
+```bash
+curl -X GET "http://localhost:5000/api/v1/tickets/all?priority=high,critical&sort_by=priority&sort_order=DESC"
+```
+
+23. **Get Tickets by Skills (Union Filter):**
+```bash
+curl -X GET "http://localhost:5000/api/v1/tickets/by-skills?skills=1,2,3&page=1&limit=10"
+```
+
+24. **Get User's Tickets:**
+```bash
+curl -X GET "http://localhost:5000/api/v1/tickets/user/3?status=new,assigned,in_progress"
+```
+
+25. **Get Technician's Tickets:**
+```bash
+curl -X GET "http://localhost:5000/api/v1/tickets/technician/1?status=assigned,in_progress"
+```
+
+26. **Get All Tickets (With Pagination):**
+```bash
+curl -X GET "http://localhost:5000/api/v1/tickets?page=1&limit=10&priority=high&status=new,assigned&sort_by=created_at&sort_order=DESC"
+```
+
+27. **Create Ticket:**
+```bash
+curl -X POST http://localhost:5000/api/v1/tickets \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subject": "Unable to access email",
+    "description": "User cannot log into their email account",
+    "priority": "normal",
+    "impact": "medium",
+    "urgency": "normal",
+    "requester_id": 3,
+    "assigned_technician_id": 1,
+    "required_skills": [1, 2],
+    "tags": ["email", "access"],
+    "resolution_due": "2024-01-02T09:00:00.000Z"
+  }'
+```
+
+28. **Update Ticket:**
+```bash
+curl -X PUT http://localhost:5000/api/v1/tickets/1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "resolved",
+    "satisfaction_rating": 5,
+    "feedback": "Excellent service, very quick resolution",
+    "tasks": [
+      {
+        "sub": "Check user credentials",
+        "status": "completed",
+        "description": "Verified user credentials are correct"
+      }
+    ]
+  }'
+```
+
+29. **Search Tickets:**
+```bash
+curl -X GET "http://localhost:5000/api/v1/tickets?search=email&page=1&limit=5"
+```
+
+30. **Filter Tickets by SLA and Date:**
+```bash
+curl -X GET "http://localhost:5000/api/v1/tickets?sla_violated=true&created_from=2024-01-01&resolution_due_to=2024-01-31"
 ```
 
 ## Advanced Filtering Guide
