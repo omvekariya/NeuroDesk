@@ -2,6 +2,7 @@ const express = require('express');
 const { body, query, validationResult } = require('express-validator');
 const {
   getAllSkills,
+  getAllSkillsSimple,
   getSkillById,
   createSkill,
   updateSkill,
@@ -125,7 +126,33 @@ const getAllSkillsValidation = [
     .withMessage('Search must be between 1 and 255 characters')
 ];
 
+// Simple validation for getAllSkillsSimple
+const getAllSkillsSimpleValidation = [
+  query('is_active')
+    .optional()
+    .isIn(['true', 'false'])
+    .withMessage('is_active must be true or false'),
+  
+  query('sort_by')
+    .optional()
+    .isIn(['id', 'name', 'description', 'is_active', 'created_at', 'updated_at'])
+    .withMessage('Sort by must be a valid field'),
+  
+  query('sort_order')
+    .optional()
+    .isIn(['ASC', 'DESC', 'asc', 'desc'])
+    .withMessage('Sort order must be ASC or DESC')
+];
+
 // Routes
+/**
+ * @route   GET /api/v1/skills/all
+ * @desc    Get all skills without pagination (simple list)
+ * @access  Public (should be protected in real app)
+ * @query   is_active, sort_by, sort_order
+ */
+router.get('/all', getAllSkillsSimpleValidation, handleValidationErrors, getAllSkillsSimple);
+
 /**
  * @route   GET /api/v1/skills
  * @desc    Get all skills with comprehensive filtering, pagination, and sorting

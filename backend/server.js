@@ -59,8 +59,8 @@ app.get('/api/v1/models', (req, res) => {
 // API routes
 app.use('/api/v1/auth', require('./routes/auth.routes'));
 app.use('/api/v1/users', require('./routes/user.routes'));
-// app.use('/api/v1/technicians', require('./routes/technician.routes'));
 app.use('/api/v1/skills', require('./routes/skill.routes'));
+app.use('/api/v1/technicians', require('./routes/technician.routes'));
 // app.use('/api/v1/tickets', require('./routes/ticket.routes'));
 
 // 404 handler

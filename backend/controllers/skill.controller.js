@@ -1,5 +1,53 @@
 const { Skill } = require('../models');
 
+// Get all skills without pagination (simple list)
+const getAllSkillsSimple = async (req, res) => {
+  try {
+    const { is_active, sort_by = 'name', sort_order = 'ASC' } = req.query;
+    
+    // Build where clause
+    const whereClause = {};
+    
+    // Active status filter (default to active only)
+    if (is_active !== undefined) {
+      whereClause.is_active = is_active === 'true';
+    } else {
+      whereClause.is_active = true; // Default to active skills only
+    }
+
+    // Validate sort fields
+    const allowedSortFields = ['id', 'name', 'description', 'is_active', 'created_at', 'updated_at'];
+    const sortField = allowedSortFields.includes(sort_by) ? sort_by : 'name';
+    const sortDirection = ['ASC', 'DESC'].includes(sort_order.toUpperCase()) ? sort_order.toUpperCase() : 'ASC';
+
+    const skills = await Skill.findAll({
+      where: whereClause,
+      order: [[sortField, sortDirection]],
+      attributes: ['id', 'name', 'description', 'is_active', 'created_at', 'updated_at']
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        skills: skills,
+        total: skills.length,
+        filters: {
+          is_active: is_active !== undefined ? is_active : 'true',
+          sort_by: sortField,
+          sort_order: sortDirection
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get all skills simple error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching skills',
+      error: error.message
+    });
+  }
+};
+
 // Get all skills with comprehensive filtering and pagination
 const getAllSkills = async (req, res) => {
   try {
@@ -326,6 +374,7 @@ const reactivateSkill = async (req, res) => {
 
 module.exports = {
   getAllSkills,
+  getAllSkillsSimple,
   getSkillById,
   createSkill,
   updateSkill,
