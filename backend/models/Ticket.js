@@ -155,6 +155,14 @@ module.exports = (sequelize, DataTypes) => {
         max: 10.0
       }
     },
+    justification: {
+      type: DataTypes.STRING(1000),
+      allowNull: true,
+      validate: {
+        len: [0, 100000]
+      },
+      comment: 'Justification for ticket decisions or actions'
+    },
     feedback: {
       type: DataTypes.TEXT,
       allowNull: true

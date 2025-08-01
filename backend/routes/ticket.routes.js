@@ -97,7 +97,12 @@ const createTicketValidation = [
   body('score')
     .optional()
     .isFloat({ min: 0.0, max: 10.0 })
-    .withMessage('Score must be a number between 0.0 and 10.0')
+    .withMessage('Score must be a number between 0.0 and 10.0'),
+  
+  body('justification')
+    .optional()
+    .isLength({ max: 1000 })
+    .withMessage('Justification must be less than 1000 characters')
 ];
 
 // Update ticket validation rules
@@ -181,6 +186,11 @@ const updateTicketValidation = [
     .optional()
     .isFloat({ min: 0.0, max: 10.0 })
     .withMessage('Score must be a number between 0.0 and 10.0'),
+  
+  body('justification')
+    .optional()
+    .isLength({ max: 100000 })
+    .withMessage('Justification must be less than 1000 characters'),
   
   body('feedback')
     .optional()
@@ -326,7 +336,7 @@ const getAllTicketsValidation = [
   
   query('sort_by')
     .optional()
-    .isIn(['id', 'subject', 'status', 'priority', 'urgency', 'impact', 'sla_violated', 'escalation_count', 'satisfaction_rating', 'created_at', 'updated_at', 'resolution_due'])
+    .isIn(['id', 'subject', 'status', 'priority', 'urgency', 'impact', 'sla_violated', 'escalation_count', 'satisfaction_rating', 'score', 'justification', 'created_at', 'updated_at', 'resolution_due'])
     .withMessage('Sort by must be a valid field'),
   
   query('sort_order')
@@ -393,7 +403,7 @@ const getAllTicketsSimpleValidation = [
   
   query('sort_by')
     .optional()
-    .isIn(['id', 'subject', 'status', 'priority', 'urgency', 'impact', 'sla_violated', 'escalation_count', 'created_at', 'updated_at', 'resolution_due'])
+    .isIn(['id', 'subject', 'status', 'priority', 'urgency', 'impact', 'sla_violated', 'escalation_count', 'satisfaction_rating', 'score', 'justification', 'created_at', 'updated_at', 'resolution_due'])
     .withMessage('Sort by must be a valid field'),
   
   query('sort_order')
