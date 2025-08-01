@@ -6,6 +6,7 @@ from flask import Flask, request, jsonify
 from langchain_openai import ChatOpenAI
 import logging
 import os
+import requests
 
 # Import our custom modules
 from config.settings import Config
@@ -157,6 +158,104 @@ def validate_request():
             "valid": False,
             "errors": [f"Validation error: {str(e)}"],
             "warnings": []
+        }), 500
+
+# Add new endpoint for skill evaluation
+@app.route("/api/evaluate-skills", methods=["POST"])
+def evaluate_skills():
+    """
+    Evaluate technician skills based on ticket data
+    
+    Request Format:
+    {
+        "ticket": {
+            "id": 1,
+            "subject": "Network connectivity issues",
+            "description": "Users unable to connect to corporate network",
+            "status": "resolved",
+            "priority": "high",
+            "impact": "high",
+            "urgency": "high",
+            "required_skills": [1, 2, 3],
+            "assigned_technician_id": 1,
+            "tasks": [
+                {
+                    "sub": "Check network configuration",
+                    "status": "completed",
+                    "description": "Verified and fixed network settings"
+                }
+            ],
+            "work_logs": [
+                {
+                    "timestamp": "2024-01-01T10:30:00.000Z",
+                    "technician_id": 1,
+                    "notes": "Resolved network configuration issues",
+                    "time_spent": 45
+                }
+            ]
+        }
+    }
+    """
+    try:
+        if not request.is_json:
+            return jsonify({"error": "Content-Type must be application/json"}), 400
+        
+        data = request.get_json()
+        
+        # Validate request has ticket data
+        if 'ticket' not in data:
+            return jsonify({"error": "Request must include ticket data"}), 400
+            
+        ticket = data['ticket']
+        
+        # Validate ticket has required fields
+        required_fields = ['subject', 'description', 'assigned_technician_id', 'required_skills']
+        missing_fields = [field for field in required_fields if field not in ticket]
+        if missing_fields:
+            return jsonify({
+                "error": "Missing required fields",
+                "missing": missing_fields
+            }), 400
+        
+        # Get technicians data
+        try:
+            technicians = evaluation_service.get_technicians()
+            technician = next(
+                (t for t in technicians if t['id'] == ticket['assigned_technician_id']), 
+                None
+            )
+            if not technician:
+                return jsonify({
+                    "error": f"Technician {ticket['assigned_technician_id']} not found"
+                }), 404
+                
+        except Exception as e:
+            return jsonify({
+                "error": "Error fetching technician data",
+                "message": str(e)
+            }), 500
+        
+        # Extract skills from ticket
+        extracted_skills = evaluation_service.extract_skills_from_ticket(ticket)
+        
+        # Update technician skills
+        result = evaluation_service.update_technician_skills(
+            technician_id=ticket['assigned_technician_id'],
+            current_skills=technician.get('skills', []),
+            new_skills=extracted_skills
+        )
+        
+        return jsonify({
+            "success": True,
+            "message": "Skills evaluated successfully",
+            "data": result.model_dump()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error evaluating skills: {str(e)}")
+        return jsonify({
+            "error": "Internal server error",
+            "message": str(e)
         }), 500
 
 if __name__ == "__main__":
