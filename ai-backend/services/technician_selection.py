@@ -73,10 +73,10 @@ class TechnicianSelectionService:
                 Output Format:  
                 Your final output must be a single JSON object containing the ID of the chosen technician and a brief, clear with detailed & pointwise justification for your choice.
                 Instructions for Justification:
-                - Justification must be detailed and pointwise.
+                - Justification must be detailed and pointwise. Each point starts on new line.
                 - Try to Justify the selection based on all the parameters you considered and keep it as detailed as possible. 
                 - Do Not involve the meta information like the ticket ID, rule number, Skill ID, etc. in the justification. Justification must not contain any Non-interpetable things.
-                - Justification must be presentable to the end-user.
+                - Justification must be Professional and presentable to the end-user.
 
                 
                 Example Output:
