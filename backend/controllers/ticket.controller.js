@@ -724,7 +724,7 @@ const createTicket = async (req, res) => {
     });
 
     // Call AI backend for ticket assignment if no technician is assigned
-    if (!assigned_technician_id && process.env.AI_BACKEND_URL) {
+    if (process.env.AI_BACKEND_URL) {
       try {
         console.log('=== AI BACKEND CALL START ===');
         console.log('Calling AI backend for ticket assignment...');
