@@ -5,6 +5,26 @@
 http://localhost:5000/api/v1
 ```
 
+## Environment Variables
+
+The following environment variables are required for the API to function properly:
+
+```env
+NODE_ENV=development
+PORT=5000
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=task_manager
+DB_DIALECT=mysql
+AI_BACKEND_URL=http://localhost:5001
+```
+
+**AI Backend Integration:**
+- `AI_BACKEND_URL`: URL of the Flask AI backend for automatic ticket assignment
+- If not set, AI assignment will be skipped
+- If set, tickets without `assigned_technician_id` will be automatically assigned by AI
+
 ## Authentication Endpoints
 
 ### 1. Register User
@@ -1493,6 +1513,17 @@ http://localhost:5000/api/v1
 }
 ```
 
+**Field Notes:**
+- `justification`: TEXT field for storing detailed justification text (no length limit)
+```
+
+**AI Integration:**
+- If `assigned_technician_id` is not provided and `AI_BACKEND_URL` environment variable is set, the system will automatically call the AI backend for ticket assignment
+- The AI backend will receive ticket data and return an `assigned_technician_id` and `justification`
+- The ticket will be automatically updated with the AI-assigned technician and justification
+- If AI assignment fails, the ticket will still be created but remain unassigned
+- AI assignment attempts are logged in the ticket's audit trail
+
 **Response:**
 ```json
 {
@@ -1521,6 +1552,13 @@ http://localhost:5000/api/v1
         "timestamp": "2024-01-01T09:00:00.000Z",
         "user_id": 3,
         "details": "Ticket created"
+      },
+      {
+        "action": "ai_assigned",
+        "timestamp": "2024-01-01T09:00:05.000Z",
+        "user_id": 3,
+        "details": "Ticket automatically assigned to technician 1 by AI",
+        "ai_justification": "Technician has 95% match with required skills for email troubleshooting"
       }
     ],
     "created_at": "2024-01-01T09:00:00.000Z",
@@ -1679,6 +1717,112 @@ http://localhost:5000/api/v1
   }
 }
 ```
+
+### 12. Process Skills and Update Ticket
+**POST** `/tickets/process-skills`
+
+**Description:** This endpoint processes an array of skill objects from the AI backend. For skills with an `id`, it updates the existing skill. For skills without an `id`, it creates new skills. After processing all skills, it updates the specified ticket with all the skill IDs.
+
+**Request Body:**
+```json
+{
+  "ticket_id": 1,
+  "skills": [
+    {
+      "id": 1,
+      "name": "JavaScript",
+      "description": "JavaScript programming language",
+      "is_active": true
+    },
+    {
+      "id": 2,
+      "name": "Python",
+      "description": "Python programming language",
+      "is_active": true
+    },
+    {
+      "name": "Machine Learning",
+      "description": "Machine learning and AI skills",
+      "is_active": true
+    },
+    {
+      "name": "Data Analysis",
+      "description": "Data analysis and visualization"
+    }
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Skills processed and ticket updated successfully",
+  "data": {
+    "ticket": {
+      "id": 1,
+      "subject": "Unable to access email",
+      "description": "User cannot log into their email account.",
+      "status": "assigned",
+      "priority": "normal",
+      "impact": "medium",
+      "urgency": "normal",
+      "required_skills": [1, 2, 15, 16],
+      "score": 7.5,
+      "justification": "Standard email access issue",
+      "created_at": "2024-01-01T09:00:00.000Z",
+      "updated_at": "2024-01-01T12:00:00.000Z",
+      "requester": {
+        "id": 3,
+        "name": "John User",
+        "email": "john.user@company.com",
+        "department": "Sales"
+      },
+      "assigned_technician": {
+        "id": 1,
+        "name": "Jane Tech",
+        "skill_level": "senior",
+        "user": {
+          "id": 2,
+          "name": "Jane Tech",
+          "email": "jane.tech@company.com"
+        }
+      }
+    },
+    "processed_skills": {
+      "total": 4,
+      "new_skills": [
+        {
+          "id": 15,
+          "name": "Machine Learning"
+        },
+        {
+          "id": 16,
+          "name": "Data Analysis"
+        }
+      ],
+      "updated_skills": [
+        {
+          "id": 1,
+          "name": "JavaScript"
+        },
+        {
+          "id": 2,
+          "name": "Python"
+        }
+      ],
+      "all_skill_ids": [1, 2, 15, 16]
+    }
+  }
+}
+```
+
+**Notes:**
+- Skills with `id` will be updated using the existing skill update logic
+- Skills without `id` will be created as new skills
+- If a skill with the same name already exists, it will use the existing skill instead of creating a duplicate
+- All processed skill IDs are added to the ticket's `required_skills` array
+- The operation is logged in the ticket's audit trail
 
 ## System Endpoints
 
@@ -1995,6 +2139,38 @@ curl -X GET "http://localhost:5000/api/v1/tickets?sla_violated=true&created_from
 curl -X GET "http://localhost:5000/api/v1/tickets?score_min=7.0&score_max=10.0&sort_by=score&sort_order=DESC"
 ```
 
+32. **Process Skills and Update Ticket:**
+```bash
+curl -X POST http://localhost:5000/api/v1/tickets/process-skills \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ticket_id": 1,
+    "skills": [
+      {
+        "id": 1,
+        "name": "JavaScript",
+        "description": "JavaScript programming language",
+        "is_active": true
+      },
+      {
+        "id": 2,
+        "name": "Python",
+        "description": "Python programming language",
+        "is_active": true
+      },
+      {
+        "name": "Machine Learning",
+        "description": "Machine learning and AI skills",
+        "is_active": true
+      },
+      {
+        "name": "Data Analysis",
+        "description": "Data analysis and visualization"
+      }
+    ]
+  }'
+```
+
 ## Advanced Filtering Guide
 
 ### Filter Capabilities
@@ -2048,3 +2224,58 @@ curl -X GET "http://localhost:5000/api/v1/tickets?score_min=7.0&score_max=10.0&s
    ```
    /users?sort_by=updated_at&sort_order=DESC&limit=10
    ```
+
+## Ticket Endpoints
+
+### GET `/tickets/debug-ai`
+Debug AI backend connection and test ticket assignment functionality.
+
+**Description:** Tests the connection to the AI backend and verifies the ticket assignment API is working correctly.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "AI backend debug test completed",
+  "ai_backend_url": "http://localhost:5001",
+  "sample_response": {
+    "success": true,
+    "selected_technician_id": 15,
+    "justification": "Technician has relevant skills for network issues",
+    "extracted_skills": [...],
+    "assignment_timestamp": "2024-01-15T10:30:00Z"
+  },
+  "response_fields": {
+    "success": true,
+    "selected_technician_id": 15,
+    "assigned_technician_id": null,
+    "justification": "Technician has relevant skills for network issues",
+    "error_message": null
+  }
+}
+```
+
+**Error Response:**
+```json
+{
+  "success": false,
+  "message": "AI backend assignment test failed",
+  "ai_backend_url": "http://localhost:5001",
+  "error": "Request timeout",
+  "error_details": {
+    "code": "ECONNABORTED",
+    "status": null,
+    "statusText": null,
+    "data": null
+  }
+}
+```
+
+**Usage:**
+```bash
+curl -X GET http://localhost:5000/api/v1/tickets/debug-ai
+```
+
+### GET `/tickets/all`
+
+// ... existing code ...

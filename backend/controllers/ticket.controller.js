@@ -1,4 +1,5 @@
 const { Ticket, User, Technician } = require('../models');
+const axios = require('axios');
 
 // Get all tickets without pagination (simple list)
 const getAllTicketsSimple = async (req, res) => {
@@ -611,6 +612,9 @@ const getTicketsByTechnicianId = async (req, res) => {
 // Create new ticket
 const createTicket = async (req, res) => {
   try {
+    console.log('=== CREATE TICKET DEBUG START ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
     const { 
       subject, 
       description, 
@@ -625,6 +629,11 @@ const createTicket = async (req, res) => {
       score,
       justification
     } = req.body;
+
+    console.log('Extracted fields:');
+    console.log('- assigned_technician_id:', assigned_technician_id);
+    console.log('- justification:', justification);
+    console.log('- AI_BACKEND_URL:', process.env.AI_BACKEND_URL);
 
     // Check if requester exists
     const requester = await User.findByPk(requester_id);
@@ -677,6 +686,8 @@ const createTicket = async (req, res) => {
       });
     }
 
+    console.log('Creating ticket with initial data...');
+    
     // Create ticket
     const newTicket = await Ticket.create({
       subject,
@@ -704,6 +715,182 @@ const createTicket = async (req, res) => {
       ]
     });
 
+    console.log('Ticket created with ID:', newTicket.id);
+    console.log('Initial ticket data:', {
+      id: newTicket.id,
+      assigned_technician_id: newTicket.assigned_technician_id,
+      justification: newTicket.justification,
+      status: newTicket.status
+    });
+
+    // Call AI backend for ticket assignment if no technician is assigned
+    if (!assigned_technician_id && process.env.AI_BACKEND_URL) {
+      try {
+        console.log('=== AI BACKEND CALL START ===');
+        console.log('Calling AI backend for ticket assignment...');
+        console.log('AI Backend URL:', process.env.AI_BACKEND_URL);
+        
+        // Prepare ticket data for AI backend
+        const aiTicketData = {
+          ticket: {
+            subject,
+            description,
+            requester_id,
+            priority: priority || 'normal',
+            impact: impact || 'medium',
+            urgency: urgency || 'normal',
+            complexity_level: 'level_1', // Default complexity level
+            tags: tags || []
+          }
+        };
+
+        console.log('AI request data:', JSON.stringify(aiTicketData, null, 2));
+
+        // Make request to AI backend
+        const aiResponse = await axios.post(
+          `${process.env.AI_BACKEND_URL}/api/ticket-assignment`,
+          aiTicketData,
+          {
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            timeout: 30000 // 30 second timeout
+          }
+        );
+
+        console.log('=== AI BACKEND RESPONSE ===');
+        console.log('Response status:', aiResponse.status);
+        console.log('Response headers:', aiResponse.headers);
+        console.log('Full AI response data:', JSON.stringify(aiResponse.data, null, 2));
+
+        // Extract technician_id and justification from AI response
+        // Handle both possible field names from AI response
+        const aiTechnicianId = aiResponse.data.selected_technician_id || aiResponse.data.assigned_technician_id;
+        const aiJustification = aiResponse.data.justification;
+
+        console.log('Extracted from AI response:');
+        console.log('- aiTechnicianId:', aiTechnicianId);
+        console.log('- aiJustification:', aiJustification);
+        console.log('- AI response success:', aiResponse.data.success);
+
+        // Update ticket with AI assignment if technician_id is provided
+        if (aiTechnicianId && aiResponse.data.success !== false) {
+          console.log('AI provided technician ID, verifying technician exists...');
+          
+          // Verify technician exists
+          const aiTechnician = await Technician.findByPk(aiTechnicianId);
+          if (aiTechnician) {
+            console.log('Technician found, updating ticket...');
+            
+            const updateData = {
+              assigned_technician_id: aiTechnicianId,
+              status: 'assigned'
+            };
+
+            // Only update justification if AI provided one
+            if (aiJustification) {
+              updateData.justification = aiJustification;
+              console.log('Adding AI justification:', aiJustification);
+            }
+
+            // Add to audit trail
+            const auditEntry = {
+              action: 'ai_assigned',
+              timestamp: new Date(),
+              user_id: requester_id,
+              details: `Ticket automatically assigned to technician ${aiTechnicianId} by AI`,
+              ai_justification: aiJustification || 'No justification provided by AI'
+            };
+
+            updateData.audit_trail = [...newTicket.audit_trail, auditEntry];
+
+            await newTicket.update(updateData);
+            
+            console.log('Ticket updated successfully with AI assignment');
+            console.log('Updated ticket data:', {
+              id: newTicket.id,
+              assigned_technician_id: newTicket.assigned_technician_id,
+              justification: newTicket.justification,
+              status: newTicket.status
+            });
+          } else {
+            console.warn(`AI assigned technician ${aiTechnicianId} not found in database`);
+            // Add to audit trail
+            await newTicket.update({
+              audit_trail: [
+                ...newTicket.audit_trail,
+                {
+                  action: 'ai_assignment_failed',
+                  timestamp: new Date(),
+                  user_id: requester_id,
+                  details: `AI assigned technician ${aiTechnicianId} not found in database`,
+                  ai_technician_id: aiTechnicianId
+                }
+              ]
+            });
+          }
+        } else {
+          console.log('No technician ID provided by AI or AI request failed');
+          if (aiResponse.data.success === false) {
+            console.log('AI request failed with error:', aiResponse.data.error_message);
+          }
+          
+          // Add to audit trail
+          await newTicket.update({
+            audit_trail: [
+              ...newTicket.audit_trail,
+              {
+                action: 'ai_no_assignment',
+                timestamp: new Date(),
+                user_id: requester_id,
+                details: 'AI did not provide technician assignment',
+                ai_response: aiResponse.data
+              }
+            ]
+          });
+        }
+        
+        console.log('=== AI BACKEND CALL END ===');
+      } catch (aiError) {
+        console.error('=== AI BACKEND ERROR ===');
+        console.error('Error calling AI backend:', aiError.message);
+        console.error('Error details:', {
+          code: aiError.code,
+          status: aiError.response?.status,
+          statusText: aiError.response?.statusText,
+          data: aiError.response?.data,
+          config: {
+            url: aiError.config?.url,
+            method: aiError.config?.method,
+            timeout: aiError.config?.timeout
+          }
+        });
+        
+        // Continue with ticket creation even if AI assignment fails
+        // Add error to audit trail
+        await newTicket.update({
+          audit_trail: [
+            ...newTicket.audit_trail,
+            {
+              action: 'ai_assignment_failed',
+              timestamp: new Date(),
+              user_id: requester_id,
+              details: 'AI ticket assignment failed',
+              error: aiError.message,
+              error_details: {
+                code: aiError.code,
+                status: aiError.response?.status,
+                data: aiError.response?.data
+              }
+            }
+          ]
+        });
+      }
+    } else {
+      console.log('Skipping AI backend call - reason:', 
+        assigned_technician_id ? 'Technician already assigned' : 'AI_BACKEND_URL not configured');
+    }
+
     // Get created ticket with relationships
     const createdTicket = await Ticket.findByPk(newTicket.id, {
       include: [
@@ -727,13 +914,25 @@ const createTicket = async (req, res) => {
       ]
     });
 
+    console.log('=== FINAL TICKET DATA ===');
+    console.log('Final ticket data:', {
+      id: createdTicket.id,
+      assigned_technician_id: createdTicket.assigned_technician_id,
+      justification: createdTicket.justification,
+      status: createdTicket.status,
+      audit_trail_length: createdTicket.audit_trail?.length
+    });
+    console.log('=== CREATE TICKET DEBUG END ===');
+
     res.status(201).json({
       success: true,
       message: 'Ticket created successfully',
       data: createdTicket
     });
   } catch (error) {
+    console.error('=== CREATE TICKET ERROR ===');
     console.error('Create ticket error:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Error creating ticket',
@@ -1132,6 +1331,306 @@ const getTicketsBySkills = async (req, res) => {
   }
 };
 
+// Process skills and update ticket
+const processSkillsAndUpdateTicket = async (req, res) => {
+  try {
+    const { skills, ticket_id } = req.body;
+
+    // Validate input
+    if (!skills || !Array.isArray(skills) || skills.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Skills array is required and must not be empty'
+      });
+    }
+
+    if (!ticket_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ticket ID is required'
+      });
+    }
+
+    // Validate each skill object
+    for (const skill of skills) {
+      if (!skill.name || typeof skill.name !== 'string') {
+        return res.status(400).json({
+          success: false,
+          message: 'Each skill must have a valid name'
+        });
+      }
+    }
+
+    // Check if ticket exists
+    const ticket = await Ticket.findByPk(ticket_id);
+    if (!ticket) {
+      return res.status(404).json({
+        success: false,
+        message: 'Ticket not found'
+      });
+    }
+
+    const { Skill } = require('../models');
+    const processedSkills = [];
+    const newSkills = [];
+    const updatedSkills = [];
+
+    // Process each skill
+    for (const skillData of skills) {
+      if (skillData.id) {
+        // Skill has ID - update existing skill
+        try {
+          const existingSkill = await Skill.findByPk(skillData.id);
+          if (!existingSkill) {
+            return res.status(404).json({
+              success: false,
+              message: `Skill with ID ${skillData.id} not found`
+            });
+          }
+
+          // Check if name is being changed and if it already exists
+          if (skillData.name && skillData.name !== existingSkill.name) {
+            const nameExists = await Skill.findOne({ 
+              where: { 
+                name: skillData.name,
+                id: { [require('sequelize').Op.ne]: skillData.id }
+              } 
+            });
+            if (nameExists) {
+              return res.status(400).json({
+                success: false,
+                message: `Skill with name '${skillData.name}' already exists`
+              });
+            }
+          }
+
+          // Prepare update data
+          const updateData = {};
+          if (skillData.name) updateData.name = skillData.name;
+          if (skillData.description !== undefined) updateData.description = skillData.description;
+          if (skillData.is_active !== undefined) updateData.is_active = skillData.is_active;
+
+          // Update skill
+          await existingSkill.update(updateData);
+          updatedSkills.push(existingSkill);
+          processedSkills.push(existingSkill.id);
+        } catch (error) {
+          console.error(`Error updating skill ${skillData.id}:`, error);
+          return res.status(500).json({
+            success: false,
+            message: `Error updating skill ${skillData.id}`,
+            error: error.message
+          });
+        }
+      } else {
+        // Skill has no ID - create new skill
+        try {
+          // Check if skill with this name already exists
+          const existingSkill = await Skill.findOne({ where: { name: skillData.name } });
+          if (existingSkill) {
+            // Use existing skill
+            processedSkills.push(existingSkill.id);
+            continue;
+          }
+
+          // Create new skill
+          const newSkill = await Skill.create({
+            name: skillData.name,
+            description: skillData.description || null,
+            is_active: skillData.is_active !== undefined ? skillData.is_active : true
+          });
+
+          newSkills.push(newSkill);
+          processedSkills.push(newSkill.id);
+        } catch (error) {
+          console.error(`Error creating skill ${skillData.name}:`, error);
+          return res.status(500).json({
+            success: false,
+            message: `Error creating skill ${skillData.name}`,
+            error: error.message
+          });
+        }
+      }
+    }
+
+    // Update ticket with all processed skill IDs
+    const currentRequiredSkills = ticket.required_skills || [];
+    const updatedRequiredSkills = [...new Set([...currentRequiredSkills, ...processedSkills])];
+
+    // Add to audit trail
+    const currentAuditTrail = ticket.audit_trail || [];
+    const auditEntry = {
+      action: 'skills_processed',
+      timestamp: new Date(),
+      user_id: req.user?.id || null,
+      details: 'Skills processed and ticket updated',
+      changes: {
+        new_skills: newSkills.map(s => ({ id: s.id, name: s.name })),
+        updated_skills: updatedSkills.map(s => ({ id: s.id, name: s.name })),
+        total_skills_processed: processedSkills.length,
+        skills_added_to_ticket: processedSkills
+      }
+    };
+
+    await ticket.update({
+      required_skills: updatedRequiredSkills,
+      audit_trail: [...currentAuditTrail, auditEntry]
+    });
+
+    // Get updated ticket with relationships
+    const updatedTicket = await Ticket.findByPk(ticket_id, {
+      include: [
+        {
+          model: User,
+          as: 'requester',
+          attributes: ['id', 'name', 'email', 'department']
+        },
+        {
+          model: Technician,
+          as: 'assigned_technician',
+          attributes: ['id', 'name', 'skill_level'],
+          include: [
+            {
+              model: User,
+              as: 'user',
+              attributes: ['id', 'name', 'email']
+            }
+          ]
+        }
+      ]
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Skills processed and ticket updated successfully',
+      data: {
+        ticket: updatedTicket,
+        processed_skills: {
+          total: processedSkills.length,
+          new_skills: newSkills.map(s => ({ id: s.id, name: s.name })),
+          updated_skills: updatedSkills.map(s => ({ id: s.id, name: s.name })),
+          all_skill_ids: processedSkills
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Process skills and update ticket error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error processing skills and updating ticket',
+      error: error.message
+    });
+  }
+};
+
+// Debug function to test AI backend connection
+const debugAIBackend = async (req, res) => {
+  try {
+    console.log('=== AI BACKEND DEBUG TEST ===');
+    
+    if (!process.env.AI_BACKEND_URL) {
+      return res.status(400).json({
+        success: false,
+        message: 'AI_BACKEND_URL not configured',
+        env_vars: {
+          AI_BACKEND_URL: process.env.AI_BACKEND_URL,
+          NODE_ENV: process.env.NODE_ENV
+        }
+      });
+    }
+
+    console.log('Testing AI backend connection to:', process.env.AI_BACKEND_URL);
+
+    // Test 1: Health check
+    try {
+      const healthResponse = await axios.get(`${process.env.AI_BACKEND_URL}/health`, {
+        timeout: 10000
+      });
+      console.log('Health check response:', healthResponse.data);
+    } catch (healthError) {
+      console.error('Health check failed:', healthError.message);
+    }
+
+    // Test 2: Service status
+    try {
+      const statusResponse = await axios.get(`${process.env.AI_BACKEND_URL}/api/service-status`, {
+        timeout: 10000
+      });
+      console.log('Service status response:', statusResponse.data);
+    } catch (statusError) {
+      console.error('Service status check failed:', statusError.message);
+    }
+
+    // Test 3: Sample ticket assignment
+    const sampleTicketData = {
+      ticket: {
+        subject: "Test ticket for debugging",
+        description: "This is a test ticket to verify AI backend integration",
+        requester_id: 1,
+        priority: "normal",
+        impact: "medium",
+        urgency: "normal",
+        complexity_level: "level_1",
+        tags: ["test", "debug"]
+      }
+    };
+
+    console.log('Sending sample ticket data:', JSON.stringify(sampleTicketData, null, 2));
+
+    try {
+      const assignmentResponse = await axios.post(
+        `${process.env.AI_BACKEND_URL}/api/ticket-assignment`,
+        sampleTicketData,
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000
+        }
+      );
+
+      console.log('Sample assignment response:', JSON.stringify(assignmentResponse.data, null, 2));
+
+      res.json({
+        success: true,
+        message: 'AI backend debug test completed',
+        ai_backend_url: process.env.AI_BACKEND_URL,
+        sample_response: assignmentResponse.data,
+        response_fields: {
+          success: assignmentResponse.data.success,
+          selected_technician_id: assignmentResponse.data.selected_technician_id,
+          assigned_technician_id: assignmentResponse.data.assigned_technician_id,
+          justification: assignmentResponse.data.justification,
+          error_message: assignmentResponse.data.error_message
+        }
+      });
+    } catch (assignmentError) {
+      console.error('Sample assignment failed:', assignmentError.message);
+      
+      res.status(500).json({
+        success: false,
+        message: 'AI backend assignment test failed',
+        ai_backend_url: process.env.AI_BACKEND_URL,
+        error: assignmentError.message,
+        error_details: {
+          code: assignmentError.code,
+          status: assignmentError.response?.status,
+          statusText: assignmentError.response?.statusText,
+          data: assignmentError.response?.data
+        }
+      });
+    }
+
+  } catch (error) {
+    console.error('AI backend debug error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error during AI backend debug test',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllTickets,
   getAllTicketsSimple,
@@ -1143,5 +1642,7 @@ module.exports = {
   deleteTicket,
   permanentDeleteTicket,
   reactivateTicket,
-  getTicketsBySkills
+  getTicketsBySkills,
+  processSkillsAndUpdateTicket,
+  debugAIBackend
 };

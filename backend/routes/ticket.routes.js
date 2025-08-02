@@ -11,8 +11,11 @@ const {
   deleteTicket,
   permanentDeleteTicket,
   reactivateTicket,
-  getTicketsBySkills
+  getTicketsBySkills,
+  processSkillsAndUpdateTicket,
+  debugAIBackend
 } = require('../controllers/ticket.controller');
+// const { handleValidationErrors } = require('../middleware/validation');
 
 const router = express.Router();
 
@@ -101,8 +104,8 @@ const createTicketValidation = [
   
   body('justification')
     .optional()
-    .isLength({ max: 1000 })
-    .withMessage('Justification must be less than 1000 characters')
+    .isString()
+    .withMessage('Justification must be a string')
 ];
 
 // Update ticket validation rules
@@ -189,8 +192,8 @@ const updateTicketValidation = [
   
   body('justification')
     .optional()
-    .isLength({ max: 100000 })
-    .withMessage('Justification must be less than 1000 characters'),
+    .isString()
+    .withMessage('Justification must be a string'),
   
   body('feedback')
     .optional()
@@ -466,6 +469,55 @@ const getTicketsBySkillsValidation = [
     .withMessage('Status must be a valid ticket status')
 ];
 
+// Validation for processSkillsAndUpdateTicket
+const processSkillsAndUpdateTicketValidation = [
+  body('ticket_id')
+    .notEmpty()
+    .withMessage('Ticket ID is required')
+    .isInt({ min: 1 })
+    .withMessage('Ticket ID must be a positive integer'),
+  
+  body('skills')
+    .notEmpty()
+    .withMessage('Skills array is required')
+    .isArray({ min: 1 })
+    .withMessage('Skills must be a non-empty array')
+    .custom((skills) => {
+      if (!Array.isArray(skills) || skills.length === 0) {
+        throw new Error('Skills must be a non-empty array');
+      }
+      
+      for (const skill of skills) {
+        if (!skill || typeof skill !== 'object') {
+          throw new Error('Each skill must be an object');
+        }
+        
+        if (!skill.name || typeof skill.name !== 'string' || skill.name.trim().length === 0) {
+          throw new Error('Each skill must have a valid name');
+        }
+        
+        // If skill has an ID, validate it
+        if (skill.id !== undefined) {
+          if (!Number.isInteger(skill.id) || skill.id < 1) {
+            throw new Error('Skill ID must be a positive integer');
+          }
+        }
+        
+        // Validate description if provided
+        if (skill.description !== undefined && typeof skill.description !== 'string') {
+          throw new Error('Skill description must be a string');
+        }
+        
+        // Validate is_active if provided
+        if (skill.is_active !== undefined && typeof skill.is_active !== 'boolean') {
+          throw new Error('Skill is_active must be a boolean');
+        }
+      }
+      
+      return true;
+    })
+];
+
 // Routes
 /**
  * @route   GET /api/v1/tickets/all
@@ -553,5 +605,20 @@ router.delete('/:id/permanent', permanentDeleteTicket);
  * @access  Public (should be protected)
  */
 router.patch('/:id/reactivate', reactivateTicket);
+
+/**
+ * @route   POST /api/v1/tickets/process-skills
+ * @desc    Process skills array and update ticket with skill IDs
+ * @access  Public (should be protected)
+ * @body    { ticket_id: number, skills: Array<{id?: number, name: string, description?: string, is_active?: boolean}> }
+ */
+router.post('/process-skills', processSkillsAndUpdateTicketValidation, handleValidationErrors, processSkillsAndUpdateTicket);
+
+/**
+ * @route   GET /api/v1/tickets/debug-ai
+ * @desc    Debug AI backend connection and test ticket assignment
+ * @access  Public (for debugging purposes)
+ */
+router.get('/debug-ai', debugAIBackend);
 
 module.exports = router;
