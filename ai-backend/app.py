@@ -3,6 +3,7 @@ NeuroDesk LLM Wrapper API
 Main Flask application for ticket assignment workflow - Step 1
 """
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from langchain_openai import ChatOpenAI
 import logging
 import os
@@ -22,6 +23,15 @@ logger = logging.getLogger(__name__)
 
 # Initialize Flask app
 app = Flask(__name__)
+
+# Configure CORS to allow all origins
+CORS(app, resources={
+    r"/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"]
+    }
+})
 
 # Validate configuration
 try:
