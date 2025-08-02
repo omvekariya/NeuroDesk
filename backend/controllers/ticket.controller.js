@@ -4,23 +4,23 @@ const axios = require('axios');
 // Get all tickets without pagination (simple list)
 const getAllTicketsSimple = async (req, res) => {
   try {
-    const { 
-      status, 
-      priority, 
+    const {
+      status,
+      priority,
       urgency,
       impact,
       sla_violated,
       assigned_technician_id,
       requester_id,
       required_skills,
-      sort_by = 'created_at', 
-      sort_order = 'DESC' 
+      sort_by = 'created_at',
+      sort_order = 'DESC'
     } = req.query;
-    
+
     // Build where clause
     const whereClause = {};
     const { Op } = require('sequelize');
-    
+
     // Status filter
     if (status) {
       if (Array.isArray(status)) {
@@ -75,7 +75,7 @@ const getAllTicketsSimple = async (req, res) => {
     // Required skills filter - check if ticket requires any of the provided skills
     if (required_skills) {
       const skillIds = Array.isArray(required_skills) ? required_skills : [required_skills];
-      const skillConditions = skillIds.map(skillId => 
+      const skillConditions = skillIds.map(skillId =>
         `JSON_SEARCH(required_skills, 'one', '${skillId}') IS NOT NULL`
       );
       whereClause[Op.and] = [
@@ -146,9 +146,9 @@ const getAllTicketsSimple = async (req, res) => {
 // Get all tickets with comprehensive filtering and pagination
 const getAllTickets = async (req, res) => {
   try {
-    const { 
-      page = 1, 
-      limit = 10, 
+    const {
+      page = 1,
+      limit = 10,
       subject,
       description,
       status,
@@ -246,7 +246,7 @@ const getAllTickets = async (req, res) => {
     // Required skills filter
     if (required_skills) {
       const skillIds = Array.isArray(required_skills) ? required_skills : [required_skills];
-      const skillConditions = skillIds.map(skillId => 
+      const skillConditions = skillIds.map(skillId =>
         `JSON_SEARCH(required_skills, 'one', '${skillId}') IS NOT NULL`
       );
       whereClause[Op.and] = [
@@ -614,10 +614,10 @@ const createTicket = async (req, res) => {
   try {
     console.log('=== CREATE TICKET DEBUG START ===');
     console.log('Request body:', JSON.stringify(req.body, null, 2));
-    
-    const { 
-      subject, 
-      description, 
+
+    const {
+      subject,
+      description,
       priority,
       impact,
       urgency,
@@ -687,7 +687,7 @@ const createTicket = async (req, res) => {
     }
 
     console.log('Creating ticket with initial data...');
-    
+
     // Create ticket
     const newTicket = await Ticket.create({
       subject,
@@ -729,7 +729,7 @@ const createTicket = async (req, res) => {
         console.log('=== AI BACKEND CALL START ===');
         console.log('Calling AI backend for ticket assignment...');
         console.log('AI Backend URL:', process.env.AI_BACKEND_URL);
-        
+
         // Prepare ticket data for AI backend
         const aiTicketData = {
           ticket: {
@@ -777,12 +777,12 @@ const createTicket = async (req, res) => {
         // Update ticket with AI assignment if technician_id is provided
         if (aiTechnicianId && aiResponse.data.success !== false) {
           console.log('AI provided technician ID, verifying technician exists...');
-          
+
           // Verify technician exists
           const aiTechnician = await Technician.findByPk(aiTechnicianId);
           if (aiTechnician) {
             console.log('Technician found, updating ticket...');
-            
+
             const updateData = {
               assigned_technician_id: aiTechnicianId,
               status: 'assigned'
@@ -806,7 +806,7 @@ const createTicket = async (req, res) => {
             updateData.audit_trail = [...newTicket.audit_trail, auditEntry];
 
             await newTicket.update(updateData);
-            
+
             console.log('Ticket updated successfully with AI assignment');
             console.log('Updated ticket data:', {
               id: newTicket.id,
@@ -835,7 +835,7 @@ const createTicket = async (req, res) => {
           if (aiResponse.data.success === false) {
             console.log('AI request failed with error:', aiResponse.data.error_message);
           }
-          
+
           // Add to audit trail
           await newTicket.update({
             audit_trail: [
@@ -850,7 +850,7 @@ const createTicket = async (req, res) => {
             ]
           });
         }
-        
+
         console.log('=== AI BACKEND CALL END ===');
       } catch (aiError) {
         console.error('=== AI BACKEND ERROR ===');
@@ -866,7 +866,7 @@ const createTicket = async (req, res) => {
             timeout: aiError.config?.timeout
           }
         });
-        
+
         // Continue with ticket creation even if AI assignment fails
         // Add error to audit trail
         await newTicket.update({
@@ -888,7 +888,7 @@ const createTicket = async (req, res) => {
         });
       }
     } else {
-      console.log('Skipping AI backend call - reason:', 
+      console.log('Skipping AI backend call - reason:',
         assigned_technician_id ? 'Technician already assigned' : 'AI_BACKEND_URL not configured');
     }
 
@@ -946,9 +946,9 @@ const createTicket = async (req, res) => {
 const updateTicket = async (req, res) => {
   try {
     const { id } = req.params;
-    const { 
-      subject, 
-      description, 
+    const {
+      subject,
+      description,
       status,
       priority,
       impact,
@@ -1114,7 +1114,7 @@ const deleteTicket = async (req, res) => {
     }
 
     // Soft delete by setting status to cancelled
-    await ticket.update({ 
+    await ticket.update({
       status: 'cancelled',
       audit_trail: [
         ...(ticket.audit_trail || []),
@@ -1183,7 +1183,7 @@ const reactivateTicket = async (req, res) => {
       });
     }
 
-    await ticket.update({ 
+    await ticket.update({
       status: 'new',
       audit_trail: [
         ...(ticket.audit_trail || []),
@@ -1250,7 +1250,7 @@ const getTicketsBySkills = async (req, res) => {
     const { Op } = require('sequelize');
 
     // Build skill filter conditions
-    const skillConditions = skillIds.map(skillId => 
+    const skillConditions = skillIds.map(skillId =>
       `JSON_SEARCH(required_skills, 'one', '${skillId}') IS NOT NULL`
     );
 
@@ -1391,11 +1391,11 @@ const processSkillsAndUpdateTicket = async (req, res) => {
 
           // Check if name is being changed and if it already exists
           if (skillData.name && skillData.name !== existingSkill.name) {
-            const nameExists = await Skill.findOne({ 
-              where: { 
+            const nameExists = await Skill.findOne({
+              where: {
                 name: skillData.name,
                 id: { [require('sequelize').Op.ne]: skillData.id }
-              } 
+              }
             });
             if (nameExists) {
               return res.status(400).json({
@@ -1528,7 +1528,7 @@ const processSkillsAndUpdateTicket = async (req, res) => {
 const debugAIBackend = async (req, res) => {
   try {
     console.log('=== AI BACKEND DEBUG TEST ===');
-    
+
     if (!process.env.AI_BACKEND_URL) {
       return res.status(400).json({
         success: false,
@@ -1607,7 +1607,7 @@ const debugAIBackend = async (req, res) => {
       });
     } catch (assignmentError) {
       console.error('Sample assignment failed:', assignmentError.message);
-      
+
       res.status(500).json({
         success: false,
         message: 'AI backend assignment test failed',
@@ -1734,34 +1734,50 @@ const closeTicket = async (req, res) => {
         }
       );
 
+      console.log('Skills evaluation response:', evaluationResponse.data);
+      
       if (evaluationResponse.data.success) {
-        // Update technician skills
-        const { technician_id, skills } = evaluationResponse.data.data;
-        const technician = await Technician.findByPk(technician_id);
+        // Extract data from the new response schema
+        const metrics = evaluationResponse.data.metrics || {};
+        const technician = evaluationResponse.data.technician || null;
+        console.log('Technician from evaluation:', technician);
         
-        if (technician) {
-          await technician.update({
-            skills: skills,
-            updated_at: new Date()
-          });
+        if (technician && technician.technician_id) {
+          const technicianToUpdate = await Technician.findByPk(technician.technician_id);
 
-          // Add skill update to ticket audit trail
-          await ticket.update({
-            audit_trail: [
-              ...updateData.audit_trail,
-              {
-                action: 'skills_evaluated',
-                timestamp: new Date(),
-                user_id: req.user?.id || null,
-                details: 'Technician skills updated based on ticket resolution',
-                updates: skills
-              }
-            ]
-          });
+          if (technicianToUpdate) {
+            // Update technician with new skills
+            await technicianToUpdate.update({
+              skills: technician.skills,
+              updated_at: technician.updated_at
+            });
+
+            // Add skill update and metrics to ticket audit trail
+            await ticket.update({
+              audit_trail: [
+                ...updateData.audit_trail,
+                {
+                  action: 'skills_evaluated',
+                  timestamp: new Date(),
+                  user_id: req.user?.id || null,
+                  details: 'Technician skills updated based on ticket resolution',
+                  updates: {
+                    skills: technician.skills,
+                    metrics: {
+                      resolution_time: metrics.resolution_time,
+                      sla_adherence: metrics.sla_adherence,
+                      skill_metrics: metrics.skill_metrics,
+                      feedback_sentiment: metrics.feedback_sentiment
+                    }
+                  }
+                }
+              ]
+            });
+          }
         }
       }
 
-      // Return response
+      // Return response with updated data
       return res.status(200).json({
         success: true,
         message: 'Ticket closed successfully',
@@ -1787,7 +1803,7 @@ const closeTicket = async (req, res) => {
               }
             ]
           }),
-          skills_evaluation: evaluationResponse.data.success ? 
+          evaluation_result: evaluationResponse.data.success ? 
             evaluationResponse.data.data : null
         }
       });
