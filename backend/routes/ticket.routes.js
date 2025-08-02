@@ -604,6 +604,9 @@ router.post('/', createTicketValidation, handleValidationErrors, createTicket);
  * @desc    Update ticket
  * @access  Public (should be protected)
  */
+router.put('/:id/close', closeTicketValidation, handleValidationErrors, closeTicket);
+
+
 router.put('/:id', updateTicketValidation, handleValidationErrors, updateTicket);
 
 /**

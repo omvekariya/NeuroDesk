@@ -1709,7 +1709,7 @@ const closeTicket = async (req, res) => {
     // Call skills evaluation API
     try {
       const evaluationResponse = await axios.post(
-        'http://localhost:8000/api/evaluate-skills',
+        `${process.env.AI_BACKEND_URL}/api/evaluate-skills`,
         {
           ticket: {
             id: ticket.id,
