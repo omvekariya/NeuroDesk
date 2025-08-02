@@ -1675,12 +1675,12 @@ const closeTicket = async (req, res) => {
       });
     }
 
-    if (ticket.status !== 'resolved') {
-      return res.status(400).json({
-        success: false,
-        message: 'Ticket must be resolved before closing'
-      });
-    }
+    // if (ticket.status !== 'resolved') {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: 'Ticket must be resolved before closing'
+    //   });
+    // }
 
     // Prepare ticket update data
     const updateData = {
