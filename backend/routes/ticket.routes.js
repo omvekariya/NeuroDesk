@@ -539,6 +539,13 @@ const closeTicketValidation = [
     .withMessage('Resolution notes must be less than 1000 characters')
 ];
 
+/**
+ * @route   GET /api/v1/tickets/debug-ai
+ * @desc    Debug AI backend connection and test ticket assignment
+ * @access  Public (for debugging purposes)
+ */
+router.get('/debug-ai', debugAIBackend);
+
 // Routes
 /**
  * @route   GET /api/v1/tickets/all
@@ -573,6 +580,42 @@ router.get('/user/:userId', getTicketsByUserValidation, handleValidationErrors, 
  */
 router.get('/technician/:technicianId', getTicketsByUserValidation, handleValidationErrors, getTicketsByTechnicianId);
 
+
+
+/**
+ * @route   POST /api/v1/tickets/process-skills
+ * @desc    Process skills array and update ticket with skill IDs
+ * @access  Public (should be protected)
+ * @body    { ticket_id: number, skills: Array<{id?: number, name: string, description?: string, is_active?: boolean}> }
+ */
+router.post('/process-skills', processSkillsAndUpdateTicketValidation, handleValidationErrors, processSkillsAndUpdateTicket);
+
+
+/**
+ * @route   PUT /api/v1/tickets/:id
+ * @desc    Update ticket
+ * @access  Public (should be protected)
+ */
+router.put('/:id/close', closeTicketValidation, closeTicket);
+
+/**
+ * @route   PATCH /api/v1/tickets/:id/reactivate
+ * @desc    Reactivate ticket
+ * @access  Public (should be protected)
+ */
+router.patch('/:id/reactivate', reactivateTicket);
+
+
+/**
+ * @route   DELETE /api/v1/tickets/:id/permanent
+ * @desc    Permanently delete ticket
+ * @access  Public (should be protected - admin only)
+ */
+router.delete('/:id/permanent', permanentDeleteTicket);
+
+
+
+
 /**
  * @route   GET /api/v1/tickets
  * @desc    Get all tickets with comprehensive filtering, pagination, and sorting
@@ -586,28 +629,22 @@ router.get('/technician/:technicianId', getTicketsByUserValidation, handleValida
 router.get('/', getAllTicketsValidation, handleValidationErrors, getAllTickets);
 
 /**
- * @route   GET /api/v1/tickets/:id
- * @desc    Get ticket by ID
- * @access  Public (should be protected in real app)
- */
-router.get('/:id', getTicketById);
-
-/**
  * @route   POST /api/v1/tickets
  * @desc    Create new ticket
  * @access  Public (should be protected)
  */
 router.post('/', createTicketValidation, handleValidationErrors, createTicket);
 
-/**
- * @route   PUT /api/v1/tickets/:id
- * @desc    Update ticket
- * @access  Public (should be protected)
- */
-router.put('/:id/close', closeTicketValidation, handleValidationErrors, closeTicket);
 
+/**
+ * @route   GET /api/v1/tickets/:id
+ * @desc    Get ticket by ID
+ * @access  Public (should be protected in real app)
+ */
+router.get('/:id', getTicketById);
 
 router.put('/:id', updateTicketValidation, handleValidationErrors, updateTicket);
+
 
 /**
  * @route   DELETE /api/v1/tickets/:id
@@ -616,33 +653,5 @@ router.put('/:id', updateTicketValidation, handleValidationErrors, updateTicket)
  */
 router.delete('/:id', deleteTicket);
 
-/**
- * @route   DELETE /api/v1/tickets/:id/permanent
- * @desc    Permanently delete ticket
- * @access  Public (should be protected - admin only)
- */
-router.delete('/:id/permanent', permanentDeleteTicket);
-
-/**
- * @route   PATCH /api/v1/tickets/:id/reactivate
- * @desc    Reactivate ticket
- * @access  Public (should be protected)
- */
-router.patch('/:id/reactivate', reactivateTicket);
-
-/**
- * @route   POST /api/v1/tickets/process-skills
- * @desc    Process skills array and update ticket with skill IDs
- * @access  Public (should be protected)
- * @body    { ticket_id: number, skills: Array<{id?: number, name: string, description?: string, is_active?: boolean}> }
- */
-router.post('/process-skills', processSkillsAndUpdateTicketValidation, handleValidationErrors, processSkillsAndUpdateTicket);
-
-/**
- * @route   GET /api/v1/tickets/debug-ai
- * @desc    Debug AI backend connection and test ticket assignment
- * @access  Public (for debugging purposes)
- */
-router.get('/debug-ai', debugAIBackend);
 
 module.exports = router;
