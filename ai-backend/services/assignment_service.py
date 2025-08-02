@@ -42,8 +42,6 @@ class AssignmentService:
             # Step 1: Extract and validate ticket data
             ticket = self._extract_and_validate_ticket(request_data)
 
-            print("\n\n\tticket", ticket)
-
             self._ticket_id = ticket.id
             
             # Step 2: Get available skills from backend
@@ -63,8 +61,6 @@ class AssignmentService:
             if len(technicians) == 0:
                 technicians = self._get_technicians(existing_extracted_skills, by_skills=False)
             
-            print("\n\n\texisting_extracted_skills", len(technicians))
-
             # Step 6: Select the best technician based on the extracted skills
             selected_technician, justification = self._select_best_technician(technicians, existing_extracted_skills, ticket)
 
@@ -427,9 +423,6 @@ class AssignmentService:
                         "description": skill["description"],
                     })
 
-            print("\n\n\tdata", data)
-
-            print("\n\n\tticket_id", self._ticket_id)
 
             response = requests.post(f"{Config.BACKEND_SERVER_URL}/api/v1/tickets/process-skills", json={"ticket_id": self._ticket_id, "skills": data}, timeout=10)
             response.raise_for_status()
