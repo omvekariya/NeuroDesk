@@ -23,6 +23,7 @@ class AssignmentService:
         self.llm = llm
         self.skill_extraction_service = SkillExtractionService(llm)
         self.technician_selection_service = TechnicianSelectionService(llm)
+        self._ticket_id = None
         
     def process_ticket_assignment(self, request_data: Dict[str, Any]) -> TicketAssignmentResponse:
         """
@@ -40,6 +41,8 @@ class AssignmentService:
             
             # Step 1: Extract and validate ticket data
             ticket = self._extract_and_validate_ticket(request_data)
+
+            print("\n\n\tticket", ticket)
 
             self._ticket_id = ticket.id
             
@@ -101,7 +104,7 @@ class AssignmentService:
                 ticket_data = request_data
             
             # Validate required fields
-            required_fields = ["subject", "description", "requester_id"]
+            required_fields = ["subject", "description", "requester_id", "id"]
             missing_fields = [field for field in required_fields if field not in ticket_data]
             
             if missing_fields:
@@ -124,6 +127,7 @@ class AssignmentService:
             
             # Create ticket object with defaults for optional fields
             ticket = Ticket(
+                id=ticket_data["id"],
                 subject=ticket_data["subject"],
                 description=ticket_data["description"],
                 requester_id=ticket_data["requester_id"],
@@ -424,6 +428,8 @@ class AssignmentService:
                     })
 
             print("\n\n\tdata", data)
+
+            print("\n\n\tticket_id", self._ticket_id)
 
             response = requests.post(f"{Config.BACKEND_SERVER_URL}/api/v1/tickets/process-skills", json={"ticket_id": self._ticket_id, "skills": data}, timeout=10)
             response.raise_for_status()

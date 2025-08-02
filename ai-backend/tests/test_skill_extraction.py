@@ -14,6 +14,7 @@ def test_skill_extraction():
     
     # Test data
     test_data = {
+        "id": 1,
         "subject": "Cannot access internal portal",
         "description": "User is unable to log in to the internal HR portal after password reset.",
         "priority": "high",

@@ -47,7 +47,7 @@ class TechnicianSelectionService:
 
                 **Rule 2: High & Medium Priority Tickets**  
                 If `ticket.priority` is `"high"` or `"medium"`:
-                - **Filter by Availability**: First, filter the list to include only technicians with `availability_status` of `"available"`.
+                - **Filter by Availability**: First, filter the list to exclude all the technicians with `availability_status` of `"unavailable"`.
                 - **Calculate Suitability Score**: For each available technician, calculate a Suitability Score using the following weighted formula:  
                 `Score = (0.6 * Skill_Match_Score) + (0.4 * Workload_Score)`
 
@@ -70,20 +70,43 @@ class TechnicianSelectionService:
                 - **Apply Standard Scoring**: Use the same Suitability Score formula from Rule 2 to find the best fit among junior and mid-level technicians who are `"available"`. This ensures they are still qualified, but gives them the opportunity before it goes to an experienced technician.
                 - **Fallback**: If no junior or mid-level technicians are available or qualified, then evaluate experienced technicians using the same scoring logic.
 
-                Output Format:  
-                Your final output must be a single JSON object containing the ID of the chosen technician and a clear with detailed & pointwise justification for your choice.
-                Instructions for Justification:
-                - Justification must be detailed and pointwise. Each point starts on new line.
-                - Try to Justify the selection based on all the parameters you considered and keep it as detailed as possible. 
-                - Do Not involve the meta information like the ticket ID, rule number, Skill ID, etc. in the justification. Justification must not contain any Non-interpetable things such as IDs, etc.
-                - You must display skill name insted of skill ID.
-                - Justification must be strictly professional and presentable to the end-user.
+                Output Format Requirements:
 
-                
+                Your final output must be a single JSON object containing the ID of the chosen technician and a clear, detailed, and pointwise justification for your choice.
+
+                CRITICAL INSTRUCTIONS FOR JUSTIFICATION:
+
+                **STRICTLY PROHIBITED ELEMENTS - NEVER INCLUDE THESE:**
+                - NO SKILL IDs (e.g., "Skill ID 42", "Skill ID 26") - Always use actual skill names
+                - NO TECHNICIAN IDs in justification text (only in the selected_technician_id field)
+                - NO TICKET IDs or internal reference numbers
+                - NO RULE NUMBERS (e.g., "Rule 2", "High & Medium Priority Rule")
+                - NO TECHNICAL METADATA or system-generated codes
+                - NO PERCENTAGE VALUES IN PARENTHESES after skill names (e.g., "Access Control (92%)")
+                - NO NUMERICAL SCORES or calculations in the justification text
+
+                **REQUIRED JUSTIFICATION FORMAT:**
+                - Each point must start on a new line with a bullet point or number
+                - Use only human-readable skill names (e.g., "Network Security", "Database Management", "Active Directory")
+                - Reference availability status in plain English (e.g., "currently available", "busy")
+                - Mention skill level in descriptive terms (e.g., "experienced specialist", "mid-level technician")
+                - Describe workload in general terms (e.g., "low current workload", "moderate workload")
+                - Keep language professional and presentable to end-users
+                - Focus on business rationale rather than technical calculations
+                - Keep the justification detailed and pointwise considering every scenarios.
+
+                **ACCEPTABLE JUSTIFICATION ELEMENTS:**
+                - Technician's name and general qualifications
+                - Skill level description (junior/mid/experienced)
+                - Specialization area in plain language
+                - Availability status in business terms
+                - General workload description
+                - Why this technician is the best fit for the specific ticket requirements
+
                 Example Output:
                 {{
-                    "selected_technician_id": 10
-                    "justification": "Assigned based on Critical Priority Rule. Technician is an experienced specialist in Network Security, which matches the ticket's requirements."
+                    "selected_technician_id": 10,
+                    "justification": "• Assigned to handle this critical network security incident\n• Technician is an experienced specialist in Network Security with proven expertise\n• Possesses all required skills including Firewall Management and Intrusion Detection\n• Currently available and has low workload to ensure immediate response\n• Strong track record in resolving similar high-impact security issues"
                 }}
 
                 **Input:**
@@ -98,7 +121,6 @@ class TechnicianSelectionService:
 
                 Technicians:  
                 {available_technicians}
-
             """,
             input_variables=["ticket_name", "ticket_description", "ticket_priority", "available_technicians", "required_skills"]
         )
