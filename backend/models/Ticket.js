@@ -156,11 +156,9 @@ module.exports = (sequelize, DataTypes) => {
       }
     },
     justification: {
-      type: DataTypes.STRING(1000),
+      type: DataTypes.TEXT,
       allowNull: true,
-      validate: {
-        len: [0, 100000]
-      },
+      defaultValue: 'Severity: Medium',
       comment: 'Justification for ticket decisions or actions'
     },
     feedback: {
