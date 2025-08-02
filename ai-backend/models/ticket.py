@@ -137,15 +137,9 @@ class TicketAssignmentResponse(BaseModel):
     """Response model for ticket assignment"""
     success: bool = Field(..., description="Whether the assignment was successful")
     selected_technician_id: Optional[int] = Field(None, description="Selected technician ID")
-    confidence_score: Optional[float] = Field(None, ge=0.0, le=1.0, description="Confidence score of the selection")
     justification: Optional[str] = Field(None, description="Justification for the selection")
-    extracted_skills: Optional[List[Skill]] = Field(None, description="Skills extracted from the ticket")
     error_message: Optional[str] = Field(None, description="Error message if assignment failed")
     
-    # Additional response fields for better tracking
-    assignment_timestamp: Optional[datetime] = Field(default_factory=datetime.now, description="When assignment was made")
-    processing_time_ms: Optional[int] = Field(None, description="Time taken to process assignment in milliseconds")
-
 class TicketSummary(BaseModel):
     """Simplified ticket model for API requests"""
     subject: str = Field(..., min_length=5, max_length=500, description="Ticket subject")
