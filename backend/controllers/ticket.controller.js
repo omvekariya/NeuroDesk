@@ -1632,6 +1632,190 @@ const debugAIBackend = async (req, res) => {
   }
 };
 
+// Close ticket
+const closeTicket = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { feedback, satisfaction_rating, resolution_notes } = req.body;
+
+    // Find ticket
+    const ticket = await Ticket.findByPk(id, {
+      include: [
+        {
+          model: User,
+          as: 'requester',
+          attributes: ['id', 'name', 'email', 'department']
+        },
+        {
+          model: Technician,
+          as: 'assigned_technician',
+          attributes: ['id', 'name', 'skill_level'],
+          include: [
+            {
+              model: User,
+              as: 'user',
+              attributes: ['id', 'name', 'email']
+            }
+          ]
+        }
+      ]
+    });
+
+    if (!ticket) {
+      return res.status(404).json({
+        success: false,
+        message: 'Ticket not found'
+      });
+    }
+
+    // Validate ticket can be closed
+    if (ticket.status === 'closed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Ticket is already closed'
+      });
+    }
+
+    // if (ticket.status !== 'resolved') {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: 'Ticket must be resolved before closing'
+    //   });
+    // }
+
+    // Prepare ticket update data
+    const updateData = {
+      status: 'closed',
+      closed_at: new Date(),
+      feedback: feedback || null,
+      satisfaction_rating: satisfaction_rating || null
+    };
+
+    // Add to audit trail
+    const currentAuditTrail = ticket.audit_trail || [];
+    updateData.audit_trail = [
+      ...currentAuditTrail,
+      {
+        action: 'closed',
+        timestamp: new Date(),
+        user_id: req.user?.id || null,
+        details: 'Ticket closed',
+        notes: resolution_notes
+      }
+    ];
+
+    // Update ticket
+    await ticket.update(updateData);
+
+    // Call skills evaluation API
+    try {
+      const evaluationResponse = await axios.post(
+        `${process.env.AI_BACKEND_URL}/api/evaluate-skills`,
+        {
+          ticket: {
+            id: ticket.id,
+            subject: ticket.subject,
+            description: ticket.description,
+            resolution: ticket.resolution,
+            status: 'closed',
+            priority: ticket.priority,
+            impact: ticket.impact,
+            urgency: ticket.urgency,
+            required_skills: ticket.required_skills,
+            assigned_technician_id: ticket.assigned_technician_id,
+            tasks: ticket.tasks,
+            work_logs: ticket.work_logs,
+            feedback: updateData.feedback,
+            satisfaction_rating: updateData.satisfaction_rating
+          }
+        },
+        {
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+
+      if (evaluationResponse.data.success) {
+        // Update technician skills
+        const { technician_id, skills } = evaluationResponse.data.data;
+        const technician = await Technician.findByPk(technician_id);
+        
+        if (technician) {
+          await technician.update({
+            skills: skills,
+            updated_at: new Date()
+          });
+
+          // Add skill update to ticket audit trail
+          await ticket.update({
+            audit_trail: [
+              ...updateData.audit_trail,
+              {
+                action: 'skills_evaluated',
+                timestamp: new Date(),
+                user_id: req.user?.id || null,
+                details: 'Technician skills updated based on ticket resolution',
+                updates: skills
+              }
+            ]
+          });
+        }
+      }
+
+      // Return response
+      return res.status(200).json({
+        success: true,
+        message: 'Ticket closed successfully',
+        data: {
+          ticket: await Ticket.findByPk(id, {
+            include: [
+              {
+                model: User,
+                as: 'requester',
+                attributes: ['id', 'name', 'email', 'department']
+              },
+              {
+                model: Technician,
+                as: 'assigned_technician',
+                attributes: ['id', 'name', 'skill_level'],
+                include: [
+                  {
+                    model: User,
+                    as: 'user',
+                    attributes: ['id', 'name', 'email']
+                  }
+                ]
+              }
+            ]
+          }),
+          skills_evaluation: evaluationResponse.data.success ? 
+            evaluationResponse.data.data : null
+        }
+      });
+
+    } catch (evalError) {
+      // Log error but don't fail the ticket closure
+      console.error('Skills evaluation error:', evalError);
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Ticket closed successfully but skills evaluation failed',
+        data: {
+          ticket: ticket,
+          evaluation_error: evalError.message
+        }
+      });
+    }
+
+  } catch (error) {
+    console.error('Close ticket error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error closing ticket',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllTickets,
   getAllTicketsSimple,
@@ -1645,5 +1829,6 @@ module.exports = {
   reactivateTicket,
   getTicketsBySkills,
   processSkillsAndUpdateTicket,
-  debugAIBackend
+  debugAIBackend,
+  closeTicket
 };

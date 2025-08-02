@@ -10,7 +10,8 @@ const {
   permanentDeleteTechnician,
   reactivateTechnician,
   getTechniciansBySkills,
-  debugTechniciansSkills
+  debugTechniciansSkills,
+  getAverageTechnicianPerformance
 } = require('../controllers/technician.controller');
 
 const router = express.Router();
@@ -388,5 +389,12 @@ router.delete('/:id/permanent', permanentDeleteTechnician);
  * @access  Public (should be protected - admin only)
  */
 router.patch('/:id/reactivate', reactivateTechnician);
+
+/**
+ * @route   GET /api/v1/technicians/avg_performance/all_technician
+ * @desc    Get average performance of all technicians based on solved tickets
+ * @access  Public (should be protected in real app)
+ */
+router.get('/avg_performance/all_technician', getAverageTechnicianPerformance);
 
 module.exports = router;

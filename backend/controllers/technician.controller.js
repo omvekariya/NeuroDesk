@@ -756,6 +756,81 @@ const debugTechniciansSkills = async (req, res) => {
   }
 };
 
+// Get average performance of all technicians based on solved tickets
+const getAverageTechnicianPerformance = async (req, res) => {
+  try {
+    const { Sequelize } = require('sequelize');
+    
+    // Get all active technicians
+    const technicians = await Technician.findAll({
+      where: { is_active: true },
+      attributes: ['id', 'name']
+    });
+
+    // Get average score for each technician (including 0 scores)
+    const technicianScores = await Promise.all(
+      technicians.map(async (technician) => {
+        const ticketStats = await Ticket.findAll({
+          where: {
+            assigned_technician_id: technician.id,
+            score: {
+              [Sequelize.Op.not]: null
+            }
+          },
+          attributes: [
+            [Sequelize.fn('AVG', Sequelize.col('score')), 'average_score']
+          ],
+          raw: true
+        });
+
+        const avgScore = parseFloat(ticketStats[0]?.average_score) || 0;
+        
+        return {
+          id: technician.id,
+          name: technician.name,
+          average_score: avgScore
+        };
+      })
+    );
+
+    // Calculate overall average of all technician scores
+    const totalTechnicians = technicianScores.length;
+    const totalScore = technicianScores.reduce((sum, tech) => sum + tech.average_score, 0);
+    const overallAverageScore = totalTechnicians > 0 ? totalScore / totalTechnicians : 0;
+
+    res.status(200).json({
+      success: true,
+      message: 'Average technician performance calculated successfully',
+      data: {
+        overall_average_score: overallAverageScore.toFixed(2),
+        total_technicians: totalTechnicians,
+        technician_scores: technicianScores.map(tech => ({
+          id: tech.id,
+          name: tech.name,
+          average_score: tech.average_score.toFixed(2)
+        }))
+      }
+    });
+
+  } catch (error) {
+    console.error('Get average technician performance error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error calculating average technician performance',
+      error: error.message
+    });
+  }
+};
+
+// Helper function to get performance rating based on score
+const getPerformanceRating = (score) => {
+  if (score >= 9.0) return 'Excellent';
+  if (score >= 8.0) return 'Good';
+  if (score >= 7.0) return 'Average';
+  if (score >= 6.0) return 'Below Average';
+  return 'Poor';
+};
+
 module.exports = {
   getAllTechnicians,
   getAllTechniciansSimple,
@@ -766,5 +841,6 @@ module.exports = {
   permanentDeleteTechnician,
   reactivateTechnician,
   getTechniciansBySkills,
-  debugTechniciansSkills
+  debugTechniciansSkills,
+  getAverageTechnicianPerformance
 };
