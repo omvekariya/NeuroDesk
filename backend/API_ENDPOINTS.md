@@ -1042,6 +1042,93 @@ AI_BACKEND_URL=http://localhost:5001
 }
 ```
 
+### 11. Get Average Performance of All Technicians
+**GET** `/technicians/avg_performance/all_technician`
+
+**Description:** Calculate and return the average performance of all technicians based on their solved tickets' scores. This endpoint provides comprehensive performance analytics including individual technician performance, overall statistics, and performance distribution.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Average technician performance calculated successfully",
+  "data": {
+    "overall_statistics": {
+      "total_technicians": 15,
+      "technicians_with_solved_tickets": 12,
+      "total_solved_tickets": 45,
+      "overall_average_score": "7.85",
+      "min_average_score": "5.20",
+      "max_average_score": "9.60",
+      "overall_performance_rating": "Good"
+    },
+    "performance_distribution": {
+      "excellent": 3,
+      "good": 5,
+      "average": 2,
+      "below_average": 1,
+      "poor": 1,
+      "no_tickets": 3
+    },
+    "technicians": [
+      {
+        "id": 1,
+        "name": "John Tech",
+        "skill_level": "senior",
+        "specialization": "Network Infrastructure",
+        "workload": 70,
+        "availability_status": "available",
+        "user": {
+          "id": 2,
+          "name": "John Tech",
+          "email": "john.tech@company.com",
+          "department": "IT Support"
+        },
+        "performance": {
+          "total_solved_tickets": 8,
+          "average_score": "8.75",
+          "total_score": "70.00",
+          "min_score": "7.50",
+          "max_score": "9.50",
+          "performance_rating": "Good"
+        }
+      }
+    ],
+    "summary": {
+      "top_performers": [
+        {
+          "id": 1,
+          "name": "John Tech",
+          "average_score": "8.75",
+          "total_solved_tickets": 8
+        }
+      ],
+      "technicians_needing_improvement": [
+        {
+          "id": 5,
+          "name": "Mike Junior",
+          "average_score": "5.20",
+          "total_solved_tickets": 3
+        }
+      ]
+    }
+  }
+}
+```
+
+**Performance Rating Scale:**
+- **Excellent**: 9.0 - 10.0
+- **Good**: 8.0 - 8.9
+- **Average**: 7.0 - 7.9
+- **Below Average**: 6.0 - 6.9
+- **Poor**: 0.0 - 5.9
+
+**Notes:**
+- Only considers tickets with status 'resolved' and non-null scores
+- Technicians with no solved tickets are included but marked as "No tickets"
+- Performance is calculated based on the average score of all solved tickets per technician
+- Top performers and technicians needing improvement are automatically identified
+
 ## Tickets Management Endpoints
 
 ### 1. Get All Tickets (Simple - No Pagination)

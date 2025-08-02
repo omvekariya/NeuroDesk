@@ -100,7 +100,8 @@ const startServer = async () => {
     
     // Sync models in development
     if (NODE_ENV === 'development') {
-      await db.sequelize.sync({ alter: true });
+      // Use force: false to avoid altering existing tables that might have too many indexes
+      await db.sequelize.sync({ force: false });
       logger.info('✅ Database models synchronized successfully.');
     }
 
