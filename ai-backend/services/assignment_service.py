@@ -68,7 +68,6 @@ class AssignmentService:
                 success=True,
                 selected_technician_id=selected_technician.id,
                 justification=justification,
-                extracted_skills=extracted_skills,
                 error_message=None,
             )
             
@@ -77,11 +76,8 @@ class AssignmentService:
             return TicketAssignmentResponse(
                 success=False,
                 selected_technician_id=None,
-                confidence_score=None,
-                reasoning=None,
-                extracted_skills=None,
+                justification=None,
                 error_message=str(e),
-                assignment_timestamp=None,
             )
     
     def _extract_and_validate_ticket(self, request_data: Dict[str, Any]) -> Ticket:
