@@ -13,7 +13,8 @@ const {
   reactivateTicket,
   getTicketsBySkills,
   processSkillsAndUpdateTicket,
-  debugAIBackend
+  debugAIBackend,
+  closeTicket
 } = require('../controllers/ticket.controller');
 // const { handleValidationErrors } = require('../middleware/validation');
 
@@ -516,6 +517,26 @@ const processSkillsAndUpdateTicketValidation = [
       
       return true;
     })
+];
+
+// Validation for closeTicket
+const closeTicketValidation = [
+  body('feedback')
+    .optional()
+    .isString()
+    .isLength({ max: 1000 })
+    .withMessage('Feedback must be less than 1000 characters'),
+    
+  body('satisfaction_rating')
+    .optional()
+    .isInt({ min: 1, max: 5 })
+    .withMessage('Satisfaction rating must be between 1 and 5'),
+    
+  body('resolution_notes')
+    .optional()
+    .isString()
+    .isLength({ max: 1000 })
+    .withMessage('Resolution notes must be less than 1000 characters')
 ];
 
 // Routes
