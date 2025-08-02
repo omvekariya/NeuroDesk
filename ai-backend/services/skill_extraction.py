@@ -26,36 +26,37 @@ class SkillExtractionService:
         self.skill_extraction_prompt = PromptTemplate(
             template="""You are a service desk assistant designed to analyze incoming support tickets and identify the relevant **technical skills** needed to resolve them.
 
-You will be provided:
-1. A support ticket with subject, description, and tags
-2. A list of available skills (from which you must choose)
+                You will be provided:
+                1. A support ticket with subject, description, and tags
+                2. A list of available skills (from which you must choose)
 
----
+                ---
 
-**Ticket Details**
-- **Subject**: {subject}
-- **Description**: {description}
-- **Tags**: {tags}
+                **Ticket Details**
+                - **Subject**: {subject}
+                - **Description**: {description}
+                - **Tags**: {tags}
 
----
+                ---
 
-**Available Skills**:  
-{available_skills}
+                **Available Skills**:  
+                {available_skills}
 
----
+                ---
 
-**Instructions**:
-- Analyze the subject and description to identify which skills are needed.
-- Select only from the provided list of available skills.
-- Output the result as a valid JSON object with the key `skills` containing an array of matched skills.
-- Do NOT include any explanations or text outside of the JSON.
+                **Instructions**:
+                - Analyze the subject and description to identify which skills are needed.
+                - Select only from the provided list of available skills.
+                - Output the result as a valid JSON object with the key `skills` containing an array of matched skills.
+                - Do NOT include any explanations or text outside of the JSON.
 
----
+                ---
 
-**Output Format**:
-{{
-  "skills": ["<skill_1>", "<skill_2>", ...]
-}}""",
+                **Output Format**:
+                {{
+                    "skills": ["<skill_1>", "<skill_2>", ...]
+                }}
+            """,
             input_variables=["subject", "description", "tags", "available_skills"]
         )
     

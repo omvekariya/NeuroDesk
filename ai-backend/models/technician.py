@@ -23,6 +23,11 @@ class SkillLevel(str, Enum):
     SENIOR = "senior"
     EXPERT = "expert"
 
+class SkillObject(BaseModel):
+    """Model for individual skill object in skills array"""
+    id: int = Field(..., description="Skill ID")
+    percentage: int = Field(..., ge=0, le=100, description="Skill proficiency percentage (0-100)")
+
 class Technician(BaseModel):
     """Technician model matching the database schema"""
     id: Optional[int] = Field(None, description="Technician unique identifier")
@@ -31,19 +36,14 @@ class Technician(BaseModel):
     
     # Workload and assignment tracking
     assigned_tickets_total: int = Field(default=0, ge=0, description="Total number of assigned tickets")
-    assigned_tickets: Optional[List[Dict[str, Any]]] = Field(default=[], description="JSON array of assigned tickets")
+    assigned_tickets: Optional[List[int]] = Field(default=[], description="Array of ticket IDs")
+    skills: Optional[List[SkillObject]] = Field(default=[], description="Array of skill objects with id and percentage")
     workload: int = Field(default=0, ge=0, le=100, description="Current workload percentage (0-100)")
     
     # Status and skills
     availability_status: AvailabilityStatus = Field(default=AvailabilityStatus.AVAILABLE, description="Current availability status")
     skill_level: SkillLevel = Field(default=SkillLevel.JUNIOR, description="Technician skill level")
     specialization: Optional[str] = Field(None, max_length=255, description="Area of specialization")
-    
-    # Performance metrics
-    performance_rating: Optional[Decimal] = Field(None, ge=Decimal('0.00'), le=Decimal('5.00'), description="Performance rating (0.00-5.00)")
-    total_tickets_resolved: int = Field(default=0, ge=0, description="Total number of tickets resolved")
-    average_resolution_time: Optional[int] = Field(None, ge=0, description="Average resolution time in minutes")
-    first_contact_resolution_rate: Optional[Decimal] = Field(None, ge=Decimal('0.00'), le=Decimal('100.00'), description="First contact resolution rate (0.00-100.00)")
     
     # Status
     is_active: bool = Field(default=True, description="Whether the technician is active")
@@ -76,6 +76,7 @@ class TechnicianCreate(BaseModel):
     user_id: int = Field(..., description="ID of the associated user")
     specialization: Optional[str] = Field(None, max_length=255, description="Area of specialization")
     skill_level: SkillLevel = Field(default=SkillLevel.JUNIOR, description="Technician skill level")
+    skills: Optional[List[SkillObject]] = Field(default=[], description="Array of skill objects with id and percentage")
 
 class TechnicianUpdate(BaseModel):
     """Model for updating an existing technician"""
@@ -84,6 +85,7 @@ class TechnicianUpdate(BaseModel):
     skill_level: Optional[SkillLevel] = Field(None, description="Technician skill level")
     availability_status: Optional[AvailabilityStatus] = Field(None, description="Current availability status")
     workload: Optional[int] = Field(None, ge=0, le=100, description="Current workload percentage")
+    skills: Optional[List[SkillObject]] = Field(None, description="Array of skill objects with id and percentage")
     is_active: Optional[bool] = Field(None, description="Whether the technician is active")
 
 class TechnicianResponse(BaseModel):
@@ -92,19 +94,18 @@ class TechnicianResponse(BaseModel):
     name: str = Field(..., description="Technician name")
     user_id: int = Field(..., description="ID of the associated user")
     assigned_tickets_total: int = Field(..., description="Total number of assigned tickets")
+    assigned_tickets: List[int] = Field(..., description="Array of ticket IDs")
+    skills: List[SkillObject] = Field(..., description="Array of skill objects with id and percentage")
     workload: int = Field(..., description="Current workload percentage")
     availability_status: AvailabilityStatus = Field(..., description="Current availability status")
     skill_level: SkillLevel = Field(..., description="Technician skill level")
     specialization: Optional[str] = Field(None, description="Area of specialization")
-    performance_rating: Optional[float] = Field(None, description="Performance rating")
-    total_tickets_resolved: int = Field(..., description="Total number of tickets resolved")
-    average_resolution_time: Optional[int] = Field(None, description="Average resolution time in minutes")
-    first_contact_resolution_rate: Optional[float] = Field(None, description="First contact resolution rate")
     is_active: bool = Field(..., description="Whether the technician is active")
     created_at: datetime = Field(..., description="When technician was created")
     updated_at: datetime = Field(..., description="When technician was last updated")
 
-class TechnicianWithSkills(BaseModel):
-    """Technician model with skills included"""
+class TechnicianWithRelations(BaseModel):
+    """Technician model with related data included"""
     technician: TechnicianResponse
-    skills: List[Dict[str, Any]] = Field(default=[], description="List of technician skills") 
+    user: Optional[Dict[str, Any]] = Field(None, description="Associated user data")
+    tickets: Optional[List[Dict[str, Any]]] = Field(default=[], description="List of assigned tickets")

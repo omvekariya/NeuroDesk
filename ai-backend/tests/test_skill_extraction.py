@@ -23,25 +23,12 @@ def test_skill_extraction():
             "urgency": "high",
             "complexity_level": "level_2",
             "tags": ["network", "vpn", "connectivity"]
-        },
-        "skills": [
-            "Network Troubleshooting",
-            "Windows Administration",
-            "Hardware Repair",
-            "Software Installation",
-            "VPN Configuration",
-            "Firewall Management",
-            "Database Management",
-            "Security Analysis",
-            "Linux Administration",
-            "Application Support"
-        ]
+        }
     }
     
     print("🧪 Testing Skill Extraction")
     print("=" * 40)
     print(f"Ticket Subject: {test_data['ticket']['subject']}")
-    print(f"Available Skills: {len(test_data['skills'])} skills")
     print()
     
     try:
@@ -61,22 +48,11 @@ def test_skill_extraction():
             
             if result.get('success'):
                 print("✅ SUCCESS: Skills extracted successfully!")
-                print(f"⏱️  Processing Time: {result.get('processing_time_ms', 'N/A')}ms")
+
+                print(f"💭 Justification: {result.get('justification', 'N/A')}")
+                print(f"💭 Selected Technician ID: {result.get('selected_technician_id', 'N/A')}")
                 
-                # Display extracted skills
-                extracted_skills = result.get('extracted_skills', [])
-                if extracted_skills:
-                    print(f"📊 Extracted Skills ({len(extracted_skills)}):")
-                    for i, skill_obj in enumerate(extracted_skills, 1):
-                        skill_name = skill_obj.get('skill_name', 'Unknown')
-                        skill_id = skill_obj.get('skill_id', 'None')
-                        score = skill_obj.get('score', 0.0)
-                        print(f"  {i}. {skill_name} (ID: {skill_id}, Score: {score})")
-                else:
-                    print("⚠️  No skills were extracted")
-                
-                print(f"💭 Reasoning: {result.get('reasoning', 'N/A')}")
-                
+                                
             else:
                 print("❌ FAILED: Skill extraction failed!")
                 print(f"Error: {result.get('error_message', 'Unknown error')}")
