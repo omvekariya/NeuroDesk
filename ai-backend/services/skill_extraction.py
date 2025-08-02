@@ -46,21 +46,39 @@ class SkillExtractionService:
 
                 **Instructions**:
                 - Analyze the subject and description to identify which skills are needed.
-                - Select only from the provided list of available skills.
                 - Output the result as a valid JSON object with the key `skills` containing an array of matched skills.
                 - Do NOT include any explanations or text outside of the JSON.
+
+                **Skill Selection Rules**:
+                - Select from the provided list of available skills if relevant or near to relevant skills are present in available skills.
+                - If No skill relevant to the ticket is present in available skills, then create new skill/skill(s).
+                - If multiple skills are relevant to the ticket, then return all the skills that are relevant to the ticket.
+                - Create at max 3 new skills if needed. Try to create minimum number of new skills.
+                - Skills should be at max 2-3 words long. keeps the skill names crisp and concise.
 
                 ---
 
                 **Output Format**:
                 {{
-                    "skills": ["<skill_1>", "<skill_2>", ...]
+                    "skills": [
+                        {{
+                            "name": "<new_skill_name>",
+                            "description": "<new_skill_description>",
+                            "is_new": true
+                        }},
+                        {{
+                            "name": "<existing_skill_name>",
+                            "description": "",
+                            "is_new": false
+                        }}
+                    ]
                 }}
+
             """,
             input_variables=["subject", "description", "tags", "available_skills"]
         )
     
-    def extract_skills_from_ticket(self, ticket: Ticket, available_skills: List[str]) -> List[str]:
+    def extract_skills_from_ticket(self, ticket: Ticket, available_skills: List[str]) -> Dict[str, Any]:
         """
         Extract relevant skills from ticket using LLM
         
@@ -111,44 +129,145 @@ class SkillExtractionService:
             
             skills = result_data['skills']
             
-            # Validate that all returned skills exist in available skills
-            valid_skills = []
+            # Validate and categorize skills
+            existing_skills = []
+            new_skills = []
+            all_skills = []
             
-            for skill_name in skills:
-                if skill_name in available_skills:
-                    valid_skills.append(skill_name)
+            for skill_obj in skills:
+                # Validate skill object structure
+                if not isinstance(skill_obj, dict):
+                    logger.warning(f"Invalid skill object format: {skill_obj}")
+                    continue
+                
+                if 'name' not in skill_obj or 'is_new' not in skill_obj:
+                    logger.warning(f"Skill object missing required fields: {skill_obj}")
+                    continue
+                
+                skill_name = skill_obj['name']
+                is_new = skill_obj.get('is_new', False)
+                description = skill_obj.get('description', '')
+                
+                # Validate skill object
+                validated_skill = {
+                    'name': skill_name,
+                    'description': description,
+                    'is_new': is_new
+                }
+                
+                all_skills.append(validated_skill)
+                
+                if is_new:
+                    # New skill
+                    if not description:
+                        logger.warning(f"New skill '{skill_name}' missing description")
+                    new_skills.append({
+                        'name': skill_name,
+                        'description': description
+                    })
+                    logger.debug(f"  - NEW: {skill_name} - {description}")
                 else:
-                    logger.warning(f"LLM returned skill '{skill_name}' not in available skills list")
+                    # Existing skill - validate it exists in available skills
+                    if skill_name in available_skills:
+                        existing_skills.append(skill_name)
+                        logger.debug(f"  - EXISTING: {skill_name}")
+                    else:
+                        logger.warning(f"LLM marked skill '{skill_name}' as existing but it's not in available skills list")
+                        # Treat as new skill
+                        new_skills.append({
+                            'name': skill_name,
+                            'description': description or f"Auto-generated skill for {skill_name}"
+                        })
+                        # Update the skill object
+                        validated_skill['is_new'] = True
+                        validated_skill['description'] = description or f"Auto-generated skill for {skill_name}"
             
-            logger.info(f"Successfully extracted {len(valid_skills)} skills from ticket")
-            for skill in valid_skills:
-                logger.debug(f"  - {skill}")
+            # Validate new skills count
+            if len(new_skills) > 3:
+                logger.warning(f"LLM created {len(new_skills)} new skills, exceeding limit of 3")
+                new_skills = new_skills[:3]  # Keep only first 3
+                # Update all_skills to reflect this limit
+                all_skills = [skill for skill in all_skills if not skill['is_new'] or skill['name'] in [s['name'] for s in new_skills]]
             
-            return valid_skills
+            result = {
+                'existing_skills': existing_skills,
+                'new_skills': new_skills,
+                'all_skills': all_skills
+            }
+            
+            logger.info(f"Successfully extracted {len(existing_skills)} existing and {len(new_skills)} new skills from ticket")
+            
+            return result
             
         except Exception as e:
             logger.error(f"Error extracting skills from ticket: {str(e)}")
             raise
     
-    def validate_extracted_skills(self, extracted_skills: List[str], available_skills: List[str]) -> bool:
+    def     validate_extracted_skills(self, extraction_result: Dict[str, Any], available_skills: List[str]) -> bool:
         """
-        Validate extracted skills against available skills
+        Validate extracted skills result
         
         Args:
-            extracted_skills: List of extracted skill names
+            extraction_result: Result from extract_skills_from_ticket
             available_skills: List of available skill names
             
         Returns:
-            True if all extracted skills are valid, False otherwise
+            True if the extraction result is valid, False otherwise
         """
-        if not extracted_skills:
-            logger.warning("No skills extracted from ticket")
-            return False
-        
-        for skill_name in extracted_skills:
-            if skill_name not in available_skills:
-                logger.warning(f"Invalid skill name: '{skill_name}' not in available skills")
+        try:
+            existing_skills = extraction_result.get('existing_skills', [])
+            new_skills = extraction_result.get('new_skills', [])
+            all_skills = extraction_result.get('all_skills', [])
+            
+            if not existing_skills and not new_skills:
+                logger.warning("No skills extracted from ticket")
                 return False
+            
+            # Validate existing skills
+            for skill_name in existing_skills:
+                if skill_name not in available_skills:
+                    logger.warning(f"Invalid existing skill name: '{skill_name}' not in available skills")
+                    return False
+            
+            # Validate new skills structure
+            for new_skill in new_skills:
+                if not isinstance(new_skill, dict):
+                    logger.warning(f"Invalid new skill format: {new_skill}")
+                    return False
+                
+                if 'name' not in new_skill:
+                    logger.warning(f"New skill missing 'name' field: {new_skill}")
+                    return False
+                
+                # Check skill name length (should be 2-3 words)
+                skill_name = new_skill['name']
+                word_count = len(skill_name.split())
+                if word_count > 3:
+                    logger.warning(f"New skill name '{skill_name}' has {word_count} words, exceeds 3-word limit")
+            
+            # Validate new skills count
+            if len(new_skills) > 3:
+                logger.warning(f"Too many new skills created: {len(new_skills)} (max 3)")
+                return False
+            
+            logger.info("Skills validation passed")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error validating extracted skills: {str(e)}")
+            return False
+    
+    def get_skill_names_only(self, extraction_result: Dict[str, Any]) -> List[str]:
+        """
+        Helper method to get just the skill names from extraction result
         
-        logger.info("Skills validation passed")
-        return True 
+        Args:
+            extraction_result: Result from extract_skills_from_ticket
+            
+        Returns:
+            List of all skill names (both existing and new)
+        """
+        skill_names = []
+        skill_names.extend(extraction_result.get('existing_skills', []))
+        skill_names.extend([skill['name'] for skill in extraction_result.get('new_skills', [])])
+        return skill_names

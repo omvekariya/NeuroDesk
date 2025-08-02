@@ -46,22 +46,22 @@ class AssignmentService:
         
             # Step 3: Extract skills from ticket using available skills list & LLM
             extracted_skill_names = self._extract_skills_from_ticket(ticket, available_skills)
+
+            print("\n\n\texisting_extracted_skills", extracted_skill_names)
             
             # Step 4: Convert skill names to SkillScoreSimple objects
-            extracted_skills = self._get_skill_objects(extracted_skill_names, available_skills)
-
-            print("\n\n\textracted_skills", extracted_skills)
+            existing_extracted_skills = self._get_skill_objects(extracted_skill_names["existing_skills"], available_skills)
 
             # Step 5: Get technicians that match the extracted skills from backend
-            technicians = self._get_technicians(extracted_skills)
+            technicians = self._get_technicians(existing_extracted_skills)
 
             if len(technicians) == 0:
-                technicians = self._get_technicians(extracted_skills, by_skills=False)
-
-            print("\n\n\ttechnicians", technicians)
+                technicians = self._get_technicians(existing_extracted_skills, by_skills=False)
+            
+            print("\n\n\texisting_extracted_skills", len(technicians))
 
             # Step 6: Select the best technician based on the extracted skills
-            selected_technician, justification = self._select_best_technician(technicians, extracted_skills, ticket)
+            selected_technician, justification = self._select_best_technician(technicians, existing_extracted_skills, ticket)
 
             # Step 7: Return the result
             return TicketAssignmentResponse(
@@ -183,7 +183,7 @@ class AssignmentService:
             logger.error(f"Error validating skills: {str(e)}")
             raise
     
-    def _extract_skills_from_ticket(self, ticket: Ticket, available_skills: List[str]) -> List[str]:
+    def _extract_skills_from_ticket(self, ticket: Ticket, available_skills: List[str]) -> Dict[str,Any]:
         """
         Extract skills from ticket using the skill extraction service
         
@@ -192,7 +192,7 @@ class AssignmentService:
             available_skills: List of available skill names to choose from
             
         Returns:
-            List of extracted skill names
+            Dict[str,Any] containing the extracted skill names and the new skills
         """
         try:
             logger.info("Starting skill extraction (Step 1)")
@@ -201,10 +201,6 @@ class AssignmentService:
             
             # Extract skills using LLM with available skills list
             extracted_skills = self.skill_extraction_service.extract_skills_from_ticket(ticket, available_skills_text)
-            
-            # Validate extracted skills
-            if not self.skill_extraction_service.validate_extracted_skills(extracted_skills, available_skills_text):
-                raise ValueError("Skill extraction validation failed")
             
             logger.info(f"Successfully extracted {len(extracted_skills)} skills from ticket")
             return extracted_skills
@@ -291,7 +287,7 @@ class AssignmentService:
             # Extract skill IDs for the search
             skill_ids = [skill.id for skill in extracted_skills if skill.id is not None]
             
-            if not skill_ids:
+            if not skill_ids and by_skills:
                 logger.warning("No valid skill IDs found for technician search")
                 return []
             
