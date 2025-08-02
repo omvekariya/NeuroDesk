@@ -14,21 +14,19 @@ def test_skill_extraction():
     
     # Test data
     test_data = {
-        "ticket": {
-            "subject": "Network connectivity issues affecting multiple users",
-            "description": "Users unable to connect to corporate network. VPN connection failing and users cannot access shared drives.",
-            "requester_id": 101,
-            "priority": "high",
-            "impact": "high",
-            "urgency": "high",
-            "complexity_level": "level_2",
-            "tags": ["network", "vpn", "connectivity"]
-        }
+        "subject": "Cannot access internal portal",
+        "description": "User is unable to log in to the internal HR portal after password reset.",
+        "priority": "high",
+        "impact": "high",
+        "urgency": "low",
+        "requester_id": 3,
+        "tags": ["HR", "login", "urgent"],
+        "resolution_due": "2025-08-02T18:00:00Z"
     }
     
     print("🧪 Testing Skill Extraction")
     print("=" * 40)
-    print(f"Ticket Subject: {test_data['ticket']['subject']}")
+    print(f"Ticket Subject: {test_data['subject']}")
     print()
     
     try:

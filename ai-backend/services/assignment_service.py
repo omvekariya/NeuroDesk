@@ -40,17 +40,19 @@ class AssignmentService:
             
             # Step 1: Extract and validate ticket data
             ticket = self._extract_and_validate_ticket(request_data)
+
+            self._ticket_id = ticket.id
             
             # Step 2: Get available skills from backend
             available_skills = self._get_available_skills()
         
             # Step 3: Extract skills from ticket using available skills list & LLM
             extracted_skill_names = self._extract_skills_from_ticket(ticket, available_skills)
-
-            print("\n\n\texisting_extracted_skills", extracted_skill_names)
             
             # Step 4: Convert skill names to SkillScoreSimple objects
             existing_extracted_skills = self._get_skill_objects(extracted_skill_names["existing_skills"], available_skills)
+
+            self._notify_extracted_skills(extracted_skill_names, existing_extracted_skills)
 
             # Step 5: Get technicians that match the extracted skills from backend
             technicians = self._get_technicians(existing_extracted_skills)
@@ -91,11 +93,12 @@ class AssignmentService:
             Validated Ticket object
         """
         try:
-            # Check if ticket data exists
-            if 'ticket' not in request_data:
-                raise ValueError("Missing 'ticket' field in request")
-            
-            ticket_data = request_data['ticket']
+            # Check if ticket data exists - support both direct fields and nested ticket object
+            if 'ticket' in request_data:
+                ticket_data = request_data['ticket']
+            else:
+                # New format: ticket fields are directly in the request
+                ticket_data = request_data
             
             # Validate required fields
             required_fields = ["subject", "description", "requester_id"]
@@ -397,6 +400,43 @@ class AssignmentService:
             logger.error(f"Error processing technicians response: {str(e)}")
             raise
         
+    def _notify_extracted_skills(self, extracted_skill_names: Dict[str,Any], existing_extracted_skills: List[Skill]):
+        """
+        Notify the extracted skills to the backend server
+        """
+        try:
+            logger.info(f"Notifying extracted skills to the backend server")
+
+            data = []
+
+            for skill in existing_extracted_skills:
+                data.append({
+                    "id": skill.id,
+                    "name": skill.name,
+                    "description": skill.description,
+                })
+            
+            if extracted_skill_names.get("new_skills"):
+                for skill in extracted_skill_names.get("new_skills"):
+                    data.append({
+                        "name": skill["name"],
+                        "description": skill["description"],
+                    })
+
+            print("\n\n\tdata", data)
+
+            response = requests.post(f"{Config.BACKEND_SERVER_URL}/api/v1/tickets/process-skills", json={"ticket_id": self._ticket_id, "skills": data}, timeout=10)
+            response.raise_for_status()
+
+            if not response.json().get("success"):
+                logger.error(f"Failed to notify extracted skills to the backend server: {response.json().get('message')}")
+                return
+
+            logger.info(f"Successfully notified extracted skills to the backend server")
+
+        except Exception as e:
+            logger.error(f"Error notifying extracted skills: {str(e)}")
+
     def _select_best_technician(self, technicians: List[Technician], extracted_skills: List[Skill], ticket: Ticket) -> Tuple[Optional[Technician], Optional[str]]:
         """
         Select the best technician based on the extracted skills
@@ -422,7 +462,7 @@ class AssignmentService:
             "implemented_flows": ["skill_extraction_step1"],
             "pending_flows": ["technician_matching", "technician_selection"],
             "llm_available": self.llm is not None,
-            "required_request_fields": ["ticket", "skills"],
+            "required_request_fields": ["subject", "description", "requester_id"],
             "step1_description": "Extract skills from ticket using provided skills list"
         }
     
@@ -443,48 +483,47 @@ class AssignmentService:
         }
         
         try:
-            # Check required top-level fields
-            required_fields = ["ticket"]
-            for field in required_fields:
-                if field not in request_data:
-                    validation_result["valid"] = False
-                    validation_result["errors"].append(f"Missing required field: {field}")
-            
-            # Validate ticket data if present
+            # Support both formats: nested ticket object or direct ticket fields
             if "ticket" in request_data:
+                # Old format: nested ticket object
                 ticket_data = request_data["ticket"]
-                required_ticket_fields = ["subject", "description", "requester_id"]
-                
-                for field in required_ticket_fields:
-                    if field not in ticket_data:
-                        validation_result["valid"] = False
-                        validation_result["errors"].append(f"Missing required ticket field: {field}")
-                
-                # Check subject length
-                if "subject" in ticket_data:
-                    subject = ticket_data["subject"]
-                    if len(subject) < 5:
-                        validation_result["valid"] = False
-                        validation_result["errors"].append("Subject must be at least 5 characters")
-                    elif len(subject) > 500:
-                        validation_result["valid"] = False
-                        validation_result["errors"].append("Subject must be at most 500 characters")
-                
-                # Check description
-                if "description" in ticket_data and not ticket_data["description"].strip():
+            else:
+                # New format: ticket fields are directly in the request
+                ticket_data = request_data
+            
+            # Validate ticket data
+            required_ticket_fields = ["subject", "description", "requester_id"]
+            
+            for field in required_ticket_fields:
+                if field not in ticket_data:
                     validation_result["valid"] = False
-                    validation_result["errors"].append("Description cannot be empty")
-                
-                # Check requester_id
-                if "requester_id" in ticket_data:
-                    try:
-                        requester_id = int(ticket_data["requester_id"])
-                        if requester_id <= 0:
-                            validation_result["valid"] = False
-                            validation_result["errors"].append("requester_id must be a positive integer")
-                    except (ValueError, TypeError):
+                    validation_result["errors"].append(f"Missing required ticket field: {field}")
+            
+            # Check subject length
+            if "subject" in ticket_data:
+                subject = ticket_data["subject"]
+                if len(subject) < 5:
+                    validation_result["valid"] = False
+                    validation_result["errors"].append("Subject must be at least 5 characters")
+                elif len(subject) > 500:
+                    validation_result["valid"] = False
+                    validation_result["errors"].append("Subject must be at most 500 characters")
+            
+            # Check description
+            if "description" in ticket_data and not ticket_data["description"].strip():
+                validation_result["valid"] = False
+                validation_result["errors"].append("Description cannot be empty")
+            
+            # Check requester_id
+            if "requester_id" in ticket_data:
+                try:
+                    requester_id = int(ticket_data["requester_id"])
+                    if requester_id <= 0:
                         validation_result["valid"] = False
-                        validation_result["errors"].append("requester_id must be a valid integer")
+                        validation_result["errors"].append("requester_id must be a positive integer")
+                except (ValueError, TypeError):
+                    validation_result["valid"] = False
+                    validation_result["errors"].append("requester_id must be a valid integer")
             
         except Exception as e:
             validation_result["valid"] = False

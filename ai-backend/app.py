@@ -94,7 +94,6 @@ def ticket_assignment():
     
     Request Format:
     {
-      "ticket": {
         "subject": "Network connectivity issues",
         "description": "Users unable to connect to corporate network",
         "requester_id": 101,
@@ -103,7 +102,6 @@ def ticket_assignment():
         "urgency": "high",
         "complexity_level": "level_2",
         "tags": ["network", "vpn", "connectivity"]
-      }
     }
     """
     try:
@@ -123,7 +121,7 @@ def ticket_assignment():
                 "warnings": validation_result["warnings"]
             }), 400
         
-        logger.info(f"Processing ticket assignment for: {request_data.get('ticket', {}).get('subject', 'Unknown')}")
+        logger.info(f"Processing ticket assignment for: {request_data.get('subject', 'Unknown')}")
         
         # Process ticket assignment
         result = assignment_service.process_ticket_assignment(request_data)
