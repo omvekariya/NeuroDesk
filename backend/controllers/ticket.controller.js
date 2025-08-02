@@ -1804,7 +1804,7 @@ const closeTicket = async (req, res) => {
             ]
           }),
           evaluation_result: evaluationResponse.data.success ? 
-            evaluationResponse.data.data : null
+            evaluationResponse.data : null
         }
       });
 
