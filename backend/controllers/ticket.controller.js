@@ -630,6 +630,8 @@ const createTicket = async (req, res) => {
       justification
     } = req.body;
 
+    assigned_technician_id = 0;
+
     console.log('Extracted fields:');
     console.log('- assigned_technician_id:', assigned_technician_id);
     console.log('- justification:', justification);
