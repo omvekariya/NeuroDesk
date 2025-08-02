@@ -733,6 +733,7 @@ const createTicket = async (req, res) => {
         // Prepare ticket data for AI backend
         const aiTicketData = {
           ticket: {
+            id: newTicket.id,
             subject,
             description,
             requester_id,
