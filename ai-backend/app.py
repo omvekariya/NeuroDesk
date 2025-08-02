@@ -111,15 +111,15 @@ def ticket_assignment():
         
         request_data = request.get_json()
         
-        # Validate request data using the service
-        validation_result = assignment_service.validate_request_data(request_data)
+        # # Validate request data using the service
+        # validation_result = assignment_service.validate_request_data(request_data)
         
-        if not validation_result["valid"]:
-            return jsonify({
-                "error": "Validation failed",
-                "errors": validation_result["errors"],
-                "warnings": validation_result["warnings"]
-            }), 400
+        # if not validation_result["valid"]:
+        #     return jsonify({
+        #         "error": "Validation failed",
+        #         "errors": validation_result["errors"],
+        #         "warnings": validation_result["warnings"]
+        #     }), 400
         
         logger.info(f"Processing ticket assignment for: {request_data.get('subject', 'Unknown')}")
         
