@@ -205,7 +205,6 @@ export const RegisterPage = () => {
                                     <option value="user">User</option>
                                     <option value="admin">Admin</option>
                                     <option value="technician">Technician</option>
-                                    <option value="manager">Manager</option>
                                 </select>
                             </div>
                         </div>

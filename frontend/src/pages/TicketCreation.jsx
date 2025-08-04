@@ -19,7 +19,6 @@ export const TicketCreatePage = () => {
         impact: 'medium', // Default impact
         urgency: 'normal', // Default urgency
         tags: '', // Comma-separated string for input, will be converted to array
-        required_skills: [], // Array of skill IDs
         requester_id: 1, // FIX: This should be dynamic, e.g., from auth context or selected by admin
         assigned_technician_id: 1 // Initially unassigned
     });
@@ -87,7 +86,7 @@ export const TicketCreatePage = () => {
                 tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag !== ''),
                 // Ensure requester_id is set. For a real app, this would come from auth context.
                 // For now, let's hardcode or make configurable.
-                requester_id: formData.requester_id || 1 // Fallback if not set
+                requester_id: JSON.parse(localStorage.getItem('user'))?.id || 101
             };
 
             const response = await ticketsApi.createTicket(dataToSubmit);
@@ -96,16 +95,16 @@ export const TicketCreatePage = () => {
                 // Show AI assignment loading for 10 seconds with progress
                 const startTime = Date.now();
                 const duration = 10000; // 10 seconds
-                
+
                 const progressInterval = setInterval(() => {
                     const elapsed = Date.now() - startTime;
                     const progress = Math.min((elapsed / duration) * 100, 100);
                     setAiProgress(progress);
                 }, 100);
-                
+
                 await new Promise(resolve => setTimeout(resolve, duration));
                 clearInterval(progressInterval);
-                
+
                 setSubmitMessage(`Ticket #${response.data.id} created successfully!`);
                 setFormData({ // Reset form
                     subject: '',
@@ -116,7 +115,7 @@ export const TicketCreatePage = () => {
                     urgency: 'normal',
                     tags: '',
                     required_skills: [],
-                    requester_id: 1,
+                    requester_id: localStorage.getItem("id"),
                     assigned_technician_id: null
                 });
                 // Navigate to the new ticket's detail page after 10 seconds
@@ -201,11 +200,11 @@ export const TicketCreatePage = () => {
                                     </p>
                                 </div>
                             </div>
-                            
+
                             {/* Progress Bar */}
                             <div className="mt-4">
                                 <div className="w-full bg-indigo-200 rounded-full h-2">
-                                    <div 
+                                    <div
                                         className="bg-indigo-600 h-2 rounded-full transition-all duration-300 ease-out"
                                         style={{ width: `${aiProgress}%` }}
                                     ></div>
@@ -216,7 +215,7 @@ export const TicketCreatePage = () => {
                                     <span>100%</span>
                                 </div>
                             </div>
-                            
+
                             <div className="mt-4 flex justify-center">
                                 <div className="flex space-x-1">
                                     <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"></div>
@@ -311,53 +310,12 @@ export const TicketCreatePage = () => {
                             </div>
                         </div>
 
-                        {/* Tags */}
-                        <div>
-                            <label htmlFor="tags" className="block text-sm font-medium text-gray-700 mb-1">Tags (comma-separated)</label>
-                            <input
-                                type="text"
-                                name="tags"
-                                id="tags"
-                                value={formData.tags}
-                                onChange={handleChange}
-                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2.5 px-4 text-base focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                                placeholder="e.g., network, software, printer"
-                            />
-                        </div>
-
-                        {/* Required Skills */}
-                        <div>
-                            <label htmlFor="required_skills" className="block text-sm font-medium text-gray-700 mb-1">Required Skills</label>
-                            {loading && <p className="text-gray-500 text-sm">Loading skills...</p>}
-                            {pageError && <p className="text-red-500 text-sm">Error loading skills: {pageError}</p>}
-                            {!loading && !pageError && availableSkills.length > 0 && (
-                                <select
-                                    name="required_skills"
-                                    id="required_skills"
-                                    multiple
-                                    value={formData.required_skills}
-                                    onChange={handleChange}
-                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2.5 px-4 text-base focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 h-40 overflow-y-auto"
-                                >
-                                    {availableSkills.map(skill => (
-                                        <option key={skill.id} value={skill.id}>
-                                            {skill.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            )}
-                            {!loading && !pageError && availableSkills.length === 0 && (
-                                <p className="text-gray-500 text-sm">No skills available. Please add skills via the admin panel.</p>
-                            )}
-                            <p className="mt-1 text-xs text-gray-500">Hold Ctrl (Windows) or Cmd (Mac) to select multiple skills.</p>
-                        </div>
-
                         {/* Submit Button */}
-                        <div className="pt-4 border-t border-gray-200">
+                        <div className="pt-4 flex  border-gray-200">
                             <button
                                 type="submit"
                                 disabled={creatingTicket || loading}
-                                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="inline-flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {creatingTicket ? (
                                     <>

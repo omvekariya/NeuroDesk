@@ -43,7 +43,7 @@ export const DashboardHeader = ({ user }) => { // Accept user prop
                     <div className="flex items-center space-x-4">
                         <button className="text-gray-500 hover:text-gray-700">
                         </button>
-                        <div className="relative" ref={dropdownRef}>
+                        <div className="absolute" ref={dropdownRef}>
                             <div
                                 className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
                                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -70,49 +70,8 @@ export const DashboardHeader = ({ user }) => { // Accept user prop
                         {isDropdownOpen && (
                             <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
                                 <div className="px-4 py-2 text-sm text-gray-700 border-b border-gray-100">
-                                    <div className="font-medium">{userName}</div>
-                                    <div className="text-gray-500">{userRole}</div>
                                 </div>
-
-                                {/* Role-specific dashboard links */}
-                                <button
-                                    onClick={() => {
-                                        navigate('/dashboard');
-                                        setIsDropdownOpen(false);
-                                    }}
-                                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                                >
-                                    <div className="flex items-center">
-                                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5a2 2 0 012-2h4a2 2 0 012 2v6H8V5z" />
-                                        </svg>
-                                        Main Dashboard
-                                    </div>
-                                </button>
-
-                                <button
-                                    onClick={() => {
-                                        // For admin users, stay on dashboard instead of going to /admin
-                                        if (userRole.toLowerCase() === 'admin') {
-                                            navigate('/dashboard');
-                                        } else {
-                                            navigate(`/${userRole.toLowerCase()}`);
-                                        }
-                                        setIsDropdownOpen(false);
-                                    }}
-                                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                                >
-                                    <div className="flex items-center">
-                                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                        </svg>
-                                        {userRole.toLowerCase() === 'admin' ? 'Main Dashboard' : `${userRole} Dashboard`}
-                                    </div>
-                                </button>
-
                                 <div className="border-t border-gray-100 my-1"></div>
-
                                 <button
                                     onClick={handleLogout}
                                     className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"

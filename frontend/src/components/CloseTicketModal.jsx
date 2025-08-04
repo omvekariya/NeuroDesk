@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
+import { TicketFeedbackModal } from './TicketFeedbackModal';
 
 export const CloseTicketModal = ({ isOpen, onClose, onSubmit }) => {
     const [formData, setFormData] = useState({
@@ -16,8 +17,8 @@ export const CloseTicketModal = ({ isOpen, onClose, onSubmit }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="bg-red fixed inset-0 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <div className="bg-red fixed inset-0 flex items-center justify-center z-50 border-1">
+            <div className=" rounded-lg p-6 w-full max-w-md border-2 border-gray-200 bg-white">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-bold">Close Ticket</h2>
                     <button onClick={onClose}><X size={20} /></button>
@@ -33,7 +34,7 @@ export const CloseTicketModal = ({ isOpen, onClose, onSubmit }) => {
                             min="1"
                             max="5"
                             value={formData.satisfaction_rating}
-                            onChange={(e) => setFormData({...formData, satisfaction_rating: e.target.value})}
+                            onChange={(e) => setFormData({ ...formData, satisfaction_rating: e.target.value })}
                             className="w-full border rounded p-2"
                         />
                     </div>
@@ -44,7 +45,7 @@ export const CloseTicketModal = ({ isOpen, onClose, onSubmit }) => {
                         </label>
                         <textarea
                             value={formData.feedback}
-                            onChange={(e) => setFormData({...formData, feedback: e.target.value})}
+                            onChange={(e) => setFormData({ ...formData, feedback: e.target.value })}
                             maxLength={1000}
                             className="w-full border rounded p-2"
                             rows={3}
@@ -57,12 +58,13 @@ export const CloseTicketModal = ({ isOpen, onClose, onSubmit }) => {
                         </label>
                         <textarea
                             value={formData.resolution_notes}
-                            onChange={(e) => setFormData({...formData, resolution_notes: e.target.value})}
+                            onChange={(e) => setFormData({ ...formData, resolution_notes: e.target.value })}
                             maxLength={1000}
                             className="w-full border rounded p-2"
                             rows={3}
                         />
                     </div>
+
 
                     <div className="flex justify-end gap-2">
                         <button
